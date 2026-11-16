@@ -133,7 +133,7 @@
         <button type="button" id="btn-wipe-creds" class="btn-danger" style="padding:7px 11px;font-size:0.82rem;">Borrar datos</button>
       </div>
     </div>
-    <p class="sub">Publicación sincronizada con WordPress y TMDB (en español) con inserción automática de reproductor[cite: 1].</p>
+    <p class="sub">Publicación sincronizada con WordPress y TMDB (en español) con reproductor interactivo de streaming.</p>
 
     <!-- CREDENCIALES WP -->
     <div class="grid-auth">
@@ -354,7 +354,6 @@
     }
 
     async function consultarTMDB(tmdbIdInput, tmdbApiKey, seccionSlug) {
-      // Las series, series de anime, docuseries, programas y telenovelas van a tvshows
       const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
       const endpointTipo = esSerie ? 'tv' : 'movie';
       const tmdbId = await resolverTmdbId(tmdbIdInput, tmdbApiKey, endpointTipo);
@@ -365,7 +364,6 @@
       if (!baseRes.ok) throw new Error(`Error al consultar TMDB (${baseRes.status})`);
       const baseData = await baseRes.json();
 
-      // Fallback a español latino si falta la sinopsis principal
       if (!baseData.overview) {
         const fbRes = await fetch(`https://api.themoviedb.org/3/${endpointTipo}/${encodeURIComponent(tmdbId)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-MX`);
         if (fbRes.ok) {
@@ -533,7 +531,7 @@
         const btn = form.querySelector('button[type="submit"]');
         const outputBox = document.getElementById('output');
         btn.disabled = true;
-        outputBox.innerHTML = '<div style="color:#94a3b8;">Publicando en WordPress e incorporando reproductor...</div>';
+        outputBox.innerHTML = '<div style="color:#94a3b8;">Publicando en WordPress e insertando reproductor streaming...</div>';
 
         try {
           const tmdbApi = document.getElementById('tmdb-api').value.trim();
@@ -546,15 +544,18 @@
 
           const info = await consultarTMDB(idInput, tmdbApi, seccionSlug);
 
+          // Objeto de reproductor compatible con DooPlay y Movie Engine Pro
           const fuentePlayer = {
             name: servidorNombre,
+            type: tipoFormato,
             select: tipoFormato,
             idioma: idioma,
             url: streamUrl
           };
 
-          // Añadir el reproductor tanto en formato DooPlay como en Movie Engine Pro (dt_player)
+          // Asignar al reproductor interactivo y limpiar cualquier rastro de tabla de descarga
           info.meta.dt_player = JSON.stringify([fuentePlayer]);
+          info.meta.dt_links = ''; 
 
           const payload = {
             title: info.titulo,
@@ -579,9 +580,9 @@
 
           outputBox.innerHTML = `
             <div style="padding:14px;background:#163020;color:#a7f3d0;border-radius:8px;">
-              <strong>✅ Publicado con éxito en DooPlay:</strong> ${info.titulo}<br>
+              <strong>✅ Publicado correctamente en DooPlay:</strong> ${info.titulo}<br>
               <strong>Sección:</strong> ${SECCIONES_DOOPLAY[seccionSlug]}<br>
-              <strong>Reproductor Nube:</strong> <code>${streamUrl}</code><br>
+              <strong>Reproductor de Nube:</strong> <code>${streamUrl}</code><br>
               <a href="${resultado.link}" target="_blank" style="color:#38bdf8;font-weight:600;">Ver publicación en MorvehTV →</a>
             </div>
           `;
