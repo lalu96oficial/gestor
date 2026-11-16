@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MorvehTV · Gestor Privado y Sincronizador de Nube</title>
+  <title>MorvehTV · Gestor Manual Sincronizado</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -14,7 +14,6 @@
       --accent: #3b82f6;
       --accent-hover: #2563eb;
       --green: #10b981;
-      --purple: #8b5cf6;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body {
@@ -27,7 +26,7 @@
     }
     .container {
       width: 100%;
-      max-width: 860px;
+      max-width: 820px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -41,7 +40,7 @@
       gap: 12px;
       margin-bottom: 6px;
     }
-    h1 { margin: 0; font-size: 1.38rem; }
+    h1 { margin: 0; font-size: 1.35rem; }
     p.sub { margin: 0 0 18px; color: var(--muted); font-size: 0.9rem; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .grid-player { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
@@ -58,7 +57,6 @@
       color: var(--text);
       font-size: 0.94rem;
     }
-    textarea { min-height: 115px; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.85rem; }
     input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
     button {
       padding: 10px 14px;
@@ -74,33 +72,10 @@
     button:disabled { opacity: 0.6; cursor: not-allowed; }
     button.btn-sec { background: #334155; }
     button.btn-sec:hover { background: #475569; }
-    button.btn-cloud { background: var(--purple); }
-    button.btn-cloud:hover { background: #7c3aed; }
     button.btn-danger { background: #7f1d1d; }
     button.btn-danger:hover { background: #991b1b; }
     button.btn-publish { width: 100%; margin-top: 8px; padding: 13px; font-size: 1rem; background: var(--green); }
     button.btn-publish:hover { background: #059669; }
-    .mode-tabs {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-bottom: 16px;
-      background: #0b0e14;
-      padding: 6px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-    }
-    .mode-tab {
-      background: transparent;
-      color: var(--muted);
-      padding: 9px 6px;
-      border-radius: 7px;
-      font-size: 0.86rem;
-    }
-    .mode-tab.active {
-      background: var(--accent);
-      color: #fff;
-    }
     #conn-status { font-size: 0.85rem; margin-bottom: 14px; line-height: 1.45; }
     #preview-card {
       display: none;
@@ -110,61 +85,14 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       gap: 14px;
+      align-items: center;
     }
     #preview-card img {
-      width: 110px;
-      height: 165px;
+      width: 100px;
+      height: 150px;
       object-fit: cover;
       border-radius: 6px;
       background: #1e293b;
-    }
-    .vault-box {
-      background: #0b0e14;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      margin-bottom: 14px;
-    }
-    .folder-card {
-      background: #0b0e14;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      margin-bottom: 12px;
-    }
-    .folder-head {
-      display: grid;
-      grid-template-columns: 1.5fr 1fr auto;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .file-list {
-      max-height: 220px;
-      overflow-y: auto;
-      font-size: 0.84rem;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
-    }
-    .file-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 5px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      gap: 8px;
-    }
-    #sync-log {
-      margin-top: 12px;
-      padding: 12px;
-      background: #0b0e14;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.85rem;
-      max-height: 230px;
-      overflow-y: auto;
-      display: none;
     }
     #output { margin-top: 14px; font-size: 0.92rem; line-height: 1.5; }
     #lock-screen {
@@ -178,20 +106,19 @@
       box-shadow: 0 12px 30px rgba(0,0,0,0.45);
     }
     @media (max-width: 720px) {
-      .grid-auth, .grid-3, .grid-player, .grid, .folder-head { grid-template-columns: 1fr; }
-      .mode-tabs { grid-template-columns: 1fr 1fr; }
+      .grid-auth, .grid-3, .grid-player, .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <!-- PANTALLA DE BLOQUEO PRIVADA (SOLO TÚ EN TU NAVEGADOR) -->
+  <!-- PANTALLA DE BLOQUEO PRIVADA -->
   <div id="lock-screen" style="display:none;">
     <h2 style="margin:0 0 8px;font-size:1.25rem;">Acceso Privado · MorvehTV</h2>
     <p id="lock-desc" style="color:#94a3b8;font-size:0.88rem;margin:0 0 16px;">
-      Define tu clave privada local para proteger tus credenciales en este navegador.
+      Introduce tu clave privada local para desbloquear tus credenciales.
     </p>
     <div class="field">
-      <input type="password" id="pin-input" placeholder="Introduce tu clave privada" />
+      <input type="password" id="pin-input" placeholder="Clave privada" />
     </div>
     <button type="button" id="btn-unlock" style="width:100%;">Entrar al Gestor</button>
     <div id="lock-err" style="color:#fca5a5;font-size:0.84rem;margin-top:10px;"></div>
@@ -200,29 +127,30 @@
   <!-- PANEL PRINCIPAL -->
   <div class="container" id="main-app" style="display:none;">
     <div class="top-bar">
-      <h1>MorvehTV · Gestor Privado y Sincronizador</h1>
+      <h1>MorvehTV · Gestor Manual con Enlace Nube</h1>
       <div style="display:flex;gap:8px;">
         <button type="button" id="btn-lock-now" class="btn-sec" style="padding:7px 11px;font-size:0.82rem;">Bloquear</button>
-        <button type="button" id="btn-wipe-creds" class="btn-danger" style="padding:7px 11px;font-size:0.82rem;">Borrar credenciales</button>
+        <button type="button" id="btn-wipe-creds" class="btn-danger" style="padding:7px 11px;font-size:0.82rem;">Borrar datos</button>
       </div>
     </div>
-    <p class="sub">Tus credenciales se guardan localmente <strong>solo en tu navegador</strong>, nunca en GitHub.</p>
+    <p class="sub">Publicación sincronizada con WordPress y TMDB usando directamente los enlaces de tu nube.</p>
 
+    <!-- CREDENCIALES WP -->
     <div class="grid-auth">
       <div class="field">
-        <label for="wp-url">URL de WordPress</label>
+        <label for="wp-url">URL WordPress</label>
         <input type="url" id="wp-url" value="https://morvehtv.com" required />
       </div>
       <div class="field">
-        <label for="wp-user">Usuario WordPress</label>
-        <input type="text" id="wp-user" placeholder="Tu usuario admin" required />
+        <label for="wp-user">Usuario WP</label>
+        <input type="text" id="wp-user" placeholder="Usuario admin" required />
       </div>
       <div class="field">
         <label for="wp-pass">Contraseña de Aplicación WP</label>
         <input type="password" id="wp-pass" placeholder="xxxx xxxx xxxx xxxx" required />
       </div>
       <div class="field">
-        <button type="button" id="btn-test-wp" class="btn-sec">Probar conexión WP</button>
+        <button type="button" id="btn-test-wp" class="btn-sec">Probar WP</button>
       </div>
     </div>
     <div id="conn-status"></div>
@@ -232,69 +160,16 @@
       <input type="password" id="tmdb-api" placeholder="Pega tu API Key de TMDB" required />
     </div>
 
-    <label>Modo de trabajo</label>
-    <div class="mode-tabs">
-      <button type="button" class="mode-tab active" data-mode="nube">Sincronizar Carpetas Nube</button>
-      <button type="button" class="mode-tab" data-mode="ficha">Película / Ficha Manual</button>
-      <button type="button" class="mode-tab" data-mode="temporada">Temporada (Season)</button>
-      <button type="button" class="mode-tab" data-mode="episodio">Episodio Individual</button>
-    </div>
-    <input type="hidden" id="publish-mode" value="nube" />
+    <hr style="border:0;border-top:1px solid var(--border);margin:16px 0;" />
 
-    <!-- PANEL 1: CONEXIÓN CON NUBE.MORVEHTV.COM VIA PUENTE WP E IMPORTACIÓN EN LOTE -->
-    <div id="cloud-sync-panel">
-      <div class="vault-box">
-        <div class="grid-auth" style="grid-template-columns: 1.5fr 1fr 1fr auto;">
-          <div class="field" style="margin-bottom:0;">
-            <label for="cloud-host">Enlace Público Carpeta (/s/...) o API Carpeta</label>
-            <input type="url" id="cloud-host" value="https://nube.morvehtv.com" placeholder="https://nube.morvehtv.com/s/TU_TOKEN" />
-          </div>
-          <div class="field" style="margin-bottom:0;">
-            <label for="cj-user">Usuario Nube (opcional)</label>
-            <input type="text" id="cj-user" placeholder="Opcional" />
-          </div>
-          <div class="field" style="margin-bottom:0;">
-            <label for="cj-key">Token App Nube (opcional)</label>
-            <input type="password" id="cj-key" placeholder="Solo si usas /api/app/carpeta" />
-          </div>
-          <div class="field" style="margin-bottom:0;">
-            <button type="button" id="btn-scan-cloud" class="btn-cloud">Escanear carpetas</button>
-          </div>
-        </div>
-
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
-          <label for="batch-links">
-            Importación directa en lote (pega tus enlaces de <code>nube.morvehtv.com/v/...</code> o <code>.mp4</code>, uno por línea con formato: <code>Título (Año) | https://nube.morvehtv.com/v/...</code>)
-          </label>
-          <textarea id="batch-links" placeholder="Gladiator (2000) | https://nube.morvehtv.com/v/abc123&#10;Interstellar (2014) | https://nube.morvehtv.com/v/def456"></textarea>
-          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-            <select id="batch-section" style="max-width:220px;">
-              <option value="peliculas">Sección: Películas</option>
-              <option value="series">Sección: Series</option>
-              <option value="peliculas-anime">Sección: Películas Anime</option>
-              <option value="series-anime">Sección: Series Anime</option>
-              <option value="documentales">Sección: Documentales</option>
-              <option value="docuseries">Sección: Docuseries</option>
-              <option value="programas-tv">Sección: Programas TV</option>
-              <option value="telenovelas">Sección: Telenovelas</option>
-            </select>
-            <button type="button" id="btn-load-batch" class="btn-sec">Cargar lista para sincronizar</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="cloud-folders-container"></div>
-      <div id="sync-log"></div>
-    </div>
-
-    <!-- PANEL 2: PUBLICACIÓN MANUAL (FICHA / TEMPORADA / EPISODIO) -->
-    <form id="generator-form" style="display:none;">
+    <!-- FORMULARIO PRINCIPAL -->
+    <form id="generator-form">
       <div class="grid-3">
         <div class="field">
-          <label for="tmdb-id">ID de TMDB o IMDb (de la película o de la serie madre)</label>
-          <input type="text" id="tmdb-id" placeholder="Ej. tt33579608 o 1399" required />
+          <label for="tmdb-id">ID de TMDB o IMDb (Ej. 1399 o tt0944947)</label>
+          <input type="text" id="tmdb-id" placeholder="ID de la película o serie" required />
         </div>
-        <div class="field" id="seccion-wrapper">
+        <div class="field">
           <label for="seccion">Sección en MorvehTV</label>
           <select id="seccion">
             <option value="peliculas">Películas</option>
@@ -312,54 +187,41 @@
         </div>
       </div>
 
-      <div class="grid" id="season-episode-fields" style="display:none;">
-        <div class="field">
-          <label for="num-temporada">Número de Temporada</label>
-          <input type="number" id="num-temporada" min="0" value="1" />
-        </div>
-        <div class="field" id="episodio-field-box">
-          <label for="num-episodio">Número de Episodio</label>
-          <input type="number" id="num-episodio" min="1" value="1" />
-        </div>
-      </div>
-
       <div id="preview-card">
         <img id="prev-poster" src="" alt="Portada" />
         <div>
           <strong id="prev-title" style="font-size:1.1rem;"></strong>
-          <div id="prev-meta" style="color:#94a3b8;font-size:0.85rem;margin:4px 0 8px;"></div>
-          <p id="prev-overview" style="margin:0;font-size:0.86rem;color:#cbd5e1;max-height:95px;overflow:auto;"></p>
+          <div id="prev-meta" style="color:#94a3b8;font-size:0.85rem;margin:4px 0 6px;"></div>
+          <p id="prev-overview" style="margin:0;font-size:0.85rem;color:#cbd5e1;max-height:85px;overflow:auto;"></p>
         </div>
       </div>
 
-      <div id="player-fields">
-        <div class="grid-player">
-          <div class="field">
-            <label for="servidor-nombre">Nombre del Servidor</label>
-            <input type="text" id="servidor-nombre" value="MorvehTV" />
-          </div>
-          <div class="field">
-            <label for="tipo-formato">Tipo de Formato</label>
-            <select id="tipo-formato">
-              <option value="iframe">URL Embed</option>
-              <option value="mp4">URL MP4</option>
-              <option value="shortcode">Shortcode or HTML</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="idioma">Idioma del Vídeo</label>
-            <select id="idioma">
-              <option value="es">Español (Castellano)</option>
-              <option value="la">Español Latino</option>
-              <option value="sub">Subtitulado</option>
-            </select>
-          </div>
-        </div>
-
+      <div class="grid-player">
         <div class="field">
-          <label for="stream-url">Enlace / Código del Reproductor</label>
-          <input type="text" id="stream-url" placeholder="https://nube.morvehtv.com/v/... o https://stream.morvehtv.com/...mp4" required />
+          <label for="servidor-nombre">Nombre Servidor</label>
+          <input type="text" id="servidor-nombre" value="MorvehTV" />
         </div>
+        <div class="field">
+          <label for="tipo-formato">Tipo de Formato</label>
+          <select id="tipo-formato">
+            <option value="iframe">URL Embed (/v/...)</option>
+            <option value="mp4">URL MP4 Directo</option>
+            <option value="shortcode">Shortcode / HTML</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="idioma">Idioma</label>
+          <select id="idioma">
+            <option value="es">Español (Castellano)</option>
+            <option value="la">Español Latino</option>
+            <option value="sub">Subtitulado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="stream-url">Enlace de la Nube (Reproductor)</label>
+        <input type="text" id="stream-url" placeholder="https://nube.morvehtv.com/v/TU_TOKEN_PUBLICO" required />
       </div>
 
       <button type="submit" class="btn-publish">Publicar en MorvehTV</button>
@@ -380,27 +242,23 @@
       'telenovelas': 'Telenovelas'
     };
 
-    const CRED_FIELDS = [
-      'wp-url', 'wp-user', 'wp-pass', 'tmdb-api',
-      'cloud-host', 'cj-user', 'cj-key'
-    ];
+    const CRED_FIELDS = ['wp-url', 'wp-user', 'wp-pass', 'tmdb-api', 'servidor-nombre'];
 
     function saveAllLocal() {
       CRED_FIELDS.forEach(id => {
         const el = document.getElementById(id);
-        if (el) localStorage.setItem('mtv_priv_' + id, el.value);
+        if (el) localStorage.setItem('mtv_man_' + id, el.value);
       });
     }
 
     function loadAllLocal() {
       CRED_FIELDS.forEach(id => {
         const el = document.getElementById(id);
-        const val = localStorage.getItem('mtv_priv_' + id);
+        const val = localStorage.getItem('mtv_man_' + id);
         if (el && val !== null) el.value = val;
       });
     }
 
-    // BLOQUEO PRIVADO CON PIN EN EL NAVEGADOR DEL PROPIETARIO
     async function sha256Hex(str) {
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
       return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -409,12 +267,11 @@
     async function initSecurityLock() {
       const lockScreen = document.getElementById('lock-screen');
       const mainApp = document.getElementById('main-app');
-      const lockDesc = document.getElementById('lock-desc');
       const pinInput = document.getElementById('pin-input');
       const lockErr = document.getElementById('lock-err');
-      const storedHash = localStorage.getItem('mtv_owner_pin_hash');
+      const storedHash = localStorage.getItem('mtv_man_pin_hash');
 
-      if (sessionStorage.getItem('mtv_unlocked') === '1' && storedHash) {
+      if (sessionStorage.getItem('mtv_man_unlocked') === '1' && storedHash) {
         lockScreen.style.display = 'none';
         mainApp.style.display = 'block';
         loadAllLocal();
@@ -423,25 +280,22 @@
 
       lockScreen.style.display = 'block';
       mainApp.style.display = 'none';
-      if (storedHash) {
-        lockDesc.textContent = 'Introduce tu clave privada de propietario para desbloquear tus credenciales.';
-      }
 
       const unlockAction = async () => {
         const pin = pinInput.value.trim();
         if (pin.length < 4) {
-          lockErr.textContent = 'La clave debe tener al menos 4 caracteres.';
+          lockErr.textContent = 'Mínimo 4 caracteres.';
           return;
         }
         const hash = await sha256Hex(pin);
         if (!storedHash) {
-          localStorage.setItem('mtv_owner_pin_hash', hash);
-          sessionStorage.setItem('mtv_unlocked', '1');
+          localStorage.setItem('mtv_man_pin_hash', hash);
+          sessionStorage.setItem('mtv_man_unlocked', '1');
           lockScreen.style.display = 'none';
           mainApp.style.display = 'block';
           loadAllLocal();
         } else if (hash === storedHash) {
-          sessionStorage.setItem('mtv_unlocked', '1');
+          sessionStorage.setItem('mtv_man_unlocked', '1');
           lockScreen.style.display = 'none';
           mainApp.style.display = 'block';
           loadAllLocal();
@@ -454,7 +308,6 @@
       pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockAction(); });
     }
 
-    // CONEXIÓN WORDPRESS Y TMDB
     function getWpBaseUrl() {
       const raw = document.getElementById('wp-url').value.trim() || 'https://morvehtv.com';
       return raw.replace(/\/+$/, '');
@@ -485,155 +338,6 @@
       });
     }
 
-    // CONEXIÓN CON NUBE.MORVEHTV.COM A TRAVÉS DEL PUENTE DE WORDPRESS (SIN CORS)
-    async function listarCarpetasNube() {
-      const raw = document.getElementById('cloud-host').value.trim() || 'https://nube.morvehtv.com';
-      const base = raw.replace(/\/+$/, '');
-      const key = document.getElementById('cj-key').value.trim();
-
-      let targetUrl = '';
-      const shareMatch = base.match(/^(https?:\/\/[^/]+)\/s\/([^/?#]+)/i);
-      if (shareMatch) {
-        targetUrl = `${shareMatch[1]}/api/public/${encodeURIComponent(shareMatch[2])}`;
-      } else if (base.includes('/api/')) {
-        targetUrl = base;
-      } else {
-        throw new Error(
-          'Pega en "Enlace Público Carpeta" el enlace compartido de una carpeta (ej. https://nube.morvehtv.com/s/TU_TOKEN) ' +
-          'o la URL https://nube.morvehtv.com/api/app/carpeta?folder=ID_CARPETA'
-        );
-      }
-
-      const wpRes = await wpFetch('/morvehtv/v1/nube-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: targetUrl, token: key })
-      });
-
-      if (!wpRes.ok) {
-        let detalle = `HTTP ${wpRes.status}`;
-        try {
-          const e = await wpRes.json();
-          if (e.message) detalle += `: ${e.message}`;
-        } catch (_) {}
-        throw new Error(`El puente de WordPress respondió ${detalle}`);
-      }
-
-      const data = await wpRes.json();
-      const origin = new URL(targetUrl).origin;
-
-      if (Array.isArray(data.carpetas)) return data.carpetas;
-
-      const items = data.archivos || data.files || data.items || [];
-      if (Array.isArray(items) && items.length > 0) {
-        return [{
-          nombre: data.carpeta?.nombre || data.nombre || data.name || 'Carpeta Nube',
-          archivos: items.map(it => ({
-            nombre: it.nombre || it.name || it.fileName,
-            url_embed: it.token
-              ? `${origin}/v/${it.token}`
-              : (it.url_embed || (it.version ? `${origin}/api/files/${it.version}` : '')),
-            formato: it.token || it.url_embed ? 'iframe' : 'mp4'
-          }))
-        }];
-      }
-
-      return [];
-    }
-
-    function parsearListaManual(texto, seccionSlug) {
-      const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      const archivos = [];
-      for (const linea of lineas) {
-        let nombre = '';
-        let url = '';
-        if (linea.includes('|')) {
-          const partes = linea.split('|');
-          nombre = partes[0].trim();
-          url = partes.slice(1).join('|').trim();
-        } else {
-          url = linea;
-          const seg = decodeURIComponent(url.split('?')[0].split('/').pop() || 'Pelicula');
-          nombre = seg;
-        }
-        if (!url) continue;
-        const esMp4 = /\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(url) || url.includes('stream.morvehtv.com');
-        archivos.push({
-          nombre,
-          url_embed: url,
-          formato: esMp4 ? 'mp4' : 'iframe'
-        });
-      }
-      if (!archivos.length) return [];
-      return [{
-        nombre: SECCIONES_DOOPLAY[seccionSlug] || 'Lista importada',
-        seccionForzada: seccionSlug,
-        archivos
-      }];
-    }
-
-    function deducirSeccionPorCarpeta(nombreCarpeta) {
-      const n = nombreCarpeta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      if (n.includes('anime') && (n.includes('pelicula') || n.includes('peli') || n.includes('movie'))) return 'peliculas-anime';
-      if (n.includes('anime')) return 'series-anime';
-      if (n.includes('docuserie')) return 'docuseries';
-      if (n.includes('documental')) return 'documentales';
-      if (n.includes('telenovela') || n.includes('novela')) return 'telenovelas';
-      if (n.includes('programa') || n.includes('tv')) return 'programas-tv';
-      if (n.includes('serie')) return 'series';
-      return 'peliculas';
-    }
-
-    function limpiarTituloYAnio(nombreArchivo) {
-      let limpio = nombreArchivo.replace(/\.(mp4|mkv|webm|avi|m3u8)$/i, '');
-      let anio = '';
-      const matchAnio = limpio.match(/[\(\[\s](19\d{2}|20\d{2})[\)\]\s]?/);
-      if (matchAnio) {
-        anio = matchAnio[1];
-        limpio = limpio.slice(0, matchAnio.index);
-      }
-      limpio = limpio
-        .replace(/\(.*?\)|\[.*?\]/g, '')
-        .replace(/\b(1080p|720p|2160p|4k|castellano|latino|espanol|dual|webrip|bluray|x264|x265|hevc|aac)\b/gi, '')
-        .replace(/[._]+/g, ' ')
-        .trim();
-      return { titulo: limpio, anio };
-    }
-
-    async function buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApiKey) {
-      const endpoint = esSerie ? 'tv' : 'movie';
-      const paramAnio = anio ? (esSerie ? `&first_air_date_year=${anio}` : `&year=${anio}`) : '';
-      const url = `https://api.themoviedb.org/3/search/${endpoint}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES&query=${encodeURIComponent(titulo)}${paramAnio}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Error buscando "${titulo}" en TMDB (${res.status})`);
-      const data = await res.json();
-      if (!data.results || data.results.length === 0) {
-        if (anio) return buscarTmdbPorNombre(titulo, '', esSerie, tmdbApiKey);
-        throw new Error(`No encontrado en TMDB: "${titulo}"`);
-      }
-      return String(data.results[0].id);
-    }
-
-    async function yaExisteEnWordPress(postTypeEndpoint, titulo) {
-      const res = await wpFetch(`/wp/v2/${postTypeEndpoint}?search=${encodeURIComponent(titulo)}&per_page=5`);
-      if (!res.ok) return false;
-      const items = await res.json();
-      if (!Array.isArray(items)) return false;
-      const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-      return items.some(it => norm(it.title?.rendered || '') === norm(titulo));
-    }
-
-    function formatearFuenteDooPlay(rawUrl, nombreServidor = 'MorvehTV', idioma = 'es', tipoFormato = 'iframe') {
-      const urlLimpia = rawUrl.trim();
-      if (!urlLimpia) return null;
-      return {
-        name: nombreServidor,
-        select: tipoFormato,
-        idioma: idioma,
-        url: urlLimpia
-      };
-    }
-
     async function resolverTmdbId(idInput, tmdbApiKey, endpointTipo) {
       const id = idInput.trim();
       if (!id.startsWith('tt')) return id;
@@ -644,9 +348,68 @@
       const findData = await findRes.json();
       const resultados = endpointTipo === 'tv' ? findData.tv_results : findData.movie_results;
       if (!resultados || resultados.length === 0) {
-        throw new Error(`No se encontró ningún título en TMDB para el ID de IMDb: ${id}`);
+        throw new Error(`No se encontró ningún título en TMDB para el IMDb ID: ${id}`);
       }
       return String(resultados[0].id);
+    }
+
+    async function consultarTMDB(tmdbIdInput, tmdbApiKey, seccionSlug) {
+      const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
+      const endpointTipo = esSerie ? 'tv' : 'movie';
+      const tmdbId = await resolverTmdbId(tmdbIdInput, tmdbApiKey, endpointTipo);
+
+      const baseRes = await fetch(
+        `https://api.themoviedb.org/3/${endpointTipo}/${encodeURIComponent(tmdbId)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES&append_to_response=videos,credits,images&include_image_language=es,en,null`
+      );
+      if (!baseRes.ok) throw new Error(`Error al consultar TMDB (${baseRes.status})`);
+      const baseData = await baseRes.json();
+
+      const castLista = (baseData.credits?.cast || []).slice(0, 10);
+      const dirLista = (baseData.credits?.crew || []).filter(c => c.job === 'Director');
+      const creadoresLista = baseData.created_by || [];
+      const videos = baseData.videos?.results || [];
+      const trailerObj =
+        videos.find(v => v.site === 'YouTube' && v.type === 'Trailer' && v.iso_639_1 === 'es') ||
+        videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
+        videos.find(v => v.site === 'YouTube');
+
+      const fecha = baseData.release_date || baseData.first_air_date || '';
+      const anio = fecha ? fecha.slice(0, 4) : '';
+
+      return {
+        postTypeEndpoint: esSerie ? 'tvshows' : 'movies',
+        tmdbId,
+        titulo: baseData.title || baseData.name,
+        sinopsis: baseData.overview || '',
+        fecha,
+        previewPoster: baseData.poster_path ? `https://image.tmdb.org/t/p/w500${baseData.poster_path}` : '',
+        metaInfo: `Nota: ${baseData.vote_average ? baseData.vote_average.toFixed(1) : 'N/A'} · Sección: ${SECCIONES_DOOPLAY[seccionSlug]}`,
+        taxonomias: {
+          dtcast: castLista.map(p => p.name),
+          dtdirector: dirLista.map(d => d.name),
+          dtcreator: creadoresLista.map(c => c.name),
+          dtyear: anio ? [anio] : []
+        },
+        meta: {
+          ids: tmdbId,
+          original_title: baseData.original_title || baseData.original_name || '',
+          original_name: baseData.original_title || baseData.original_name || '',
+          tagline: baseData.tagline || '',
+          dt_poster: baseData.poster_path || '',
+          dt_backdrop: baseData.backdrop_path || '',
+          imagenes: (baseData.images?.backdrops || []).slice(0, 8).map(i => i.file_path).join('\n'),
+          release_date: fecha,
+          first_air_date: fecha,
+          last_air_date: baseData.last_air_date || '',
+          runtime: String(baseData.runtime || (baseData.episode_run_time && baseData.episode_run_time[0]) || ''),
+          imdbRating: baseData.vote_average ? baseData.vote_average.toFixed(1) : '',
+          imdbVotes: String(baseData.vote_count || ''),
+          youtube_id: trailerObj ? `[${trailerObj.key}]` : '',
+          dt_cast: castLista.map(p => `[${p.profile_path || 'null'};${p.name},${p.character || ''}]`).join(''),
+          dt_dir: dirLista.map(d => `[${d.profile_path || 'null'};${d.name}]`).join(''),
+          dt_creator: creadoresLista.map(c => `[${c.profile_path || 'null'};${c.name}]`).join('')
+        }
+      };
     }
 
     async function obtenerIdGeneroWP(slugGenero) {
@@ -664,301 +427,6 @@
       return null;
     }
 
-    async function consultarTMDBPorModo({ mode, idInput, tmdbApiKey, seccionSlug, temporada, episodio }) {
-      const esSerie = mode !== 'ficha' || ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
-      const endpointTipo = esSerie ? 'tv' : 'movie';
-      const tmdbId = await resolverTmdbId(idInput, tmdbApiKey, endpointTipo);
-
-      const baseRes = await fetch(
-        `https://api.themoviedb.org/3/${endpointTipo}/${encodeURIComponent(tmdbId)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES&append_to_response=videos,credits,images&include_image_language=es,en,null`
-      );
-      if (!baseRes.ok) throw new Error(`Error al consultar TMDB (${baseRes.status})`);
-      const baseData = await baseRes.json();
-
-      if (!baseData.overview) {
-        const fbRes = await fetch(`https://api.themoviedb.org/3/${endpointTipo}/${encodeURIComponent(tmdbId)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-MX`);
-        if (fbRes.ok) {
-          const fb = await fbRes.json();
-          if (fb.overview) baseData.overview = fb.overview;
-        }
-      }
-
-      if (mode === 'ficha') {
-        const castLista = (baseData.credits?.cast || []).slice(0, 10);
-        const dirLista = (baseData.credits?.crew || []).filter(c => c.job === 'Director');
-        const creadoresLista = baseData.created_by || [];
-        const videos = baseData.videos?.results || [];
-        const trailerObj =
-          videos.find(v => v.site === 'YouTube' && v.type === 'Trailer' && v.iso_639_1 === 'es') ||
-          videos.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
-          videos.find(v => v.site === 'YouTube');
-
-        const fecha = baseData.release_date || baseData.first_air_date || '';
-        const anio = fecha ? fecha.slice(0, 4) : '';
-
-        return {
-          postTypeEndpoint: esSerie ? 'tvshows' : 'movies',
-          tmdbId,
-          titulo: baseData.title || baseData.name,
-          sinopsis: baseData.overview || '',
-          fecha,
-          previewPoster: baseData.poster_path ? `https://image.tmdb.org/t/p/w500${baseData.poster_path}` : '',
-          metaInfo: `Nota: ${baseData.vote_average ? baseData.vote_average.toFixed(1) : 'N/A'} · Sección: ${SECCIONES_DOOPLAY[seccionSlug]}`,
-          taxonomias: {
-            dtcast: castLista.map(p => p.name),
-            dtdirector: dirLista.map(d => d.name),
-            dtcreator: creadoresLista.map(c => c.name),
-            dtyear: anio ? [anio] : []
-          },
-          meta: {
-            ids: tmdbId,
-            original_title: baseData.original_title || baseData.original_name || '',
-            original_name: baseData.original_title || baseData.original_name || '',
-            tagline: baseData.tagline || '',
-            dt_poster: baseData.poster_path || '',
-            dt_backdrop: baseData.backdrop_path || '',
-            imagenes: (baseData.images?.backdrops || []).slice(0, 8).map(i => i.file_path).join('\n'),
-            release_date: fecha,
-            first_air_date: fecha,
-            last_air_date: baseData.last_air_date || '',
-            runtime: String(baseData.runtime || (baseData.episode_run_time && baseData.episode_run_time[0]) || ''),
-            imdbRating: baseData.vote_average ? baseData.vote_average.toFixed(1) : '',
-            imdbVotes: String(baseData.vote_count || ''),
-            number_of_seasons: String(baseData.number_of_seasons || ''),
-            number_of_episodes: String(baseData.number_of_episodes || ''),
-            youtube_id: trailerObj ? `[${trailerObj.key}]` : '',
-            dt_cast: castLista.map(p => `[${p.profile_path || 'null'};${p.name},${p.character || ''}]`).join(''),
-            dt_dir: dirLista.map(d => `[${d.profile_path || 'null'};${d.name}]`).join(''),
-            dt_creator: creadoresLista.map(c => `[${c.profile_path || 'null'};${c.name}]`).join('')
-          }
-        };
-      }
-
-      if (mode === 'temporada') {
-        const sRes = await fetch(
-          `https://api.themoviedb.org/3/tv/${encodeURIComponent(tmdbId)}/season/${encodeURIComponent(temporada)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES`
-        );
-        if (!sRes.ok) throw new Error(`No se encontró la Temporada ${temporada} en TMDB (${sRes.status})`);
-        const sData = await sRes.json();
-        const serieNombre = baseData.name || baseData.original_name;
-        const poster = sData.poster_path || baseData.poster_path || '';
-
-        return {
-          postTypeEndpoint: 'seasons',
-          tmdbId,
-          titulo: `${serieNombre}: Temporada ${temporada}`,
-          sinopsis: sData.overview || baseData.overview || '',
-          fecha: sData.air_date || '',
-          previewPoster: poster ? `https://image.tmdb.org/t/p/w500${poster}` : '',
-          metaInfo: `Serie: ${serieNombre} · Temporada ${temporada}`,
-          taxonomias: {},
-          meta: {
-            ids: tmdbId,
-            temporada: String(temporada),
-            serie: serieNombre,
-            dt_poster: poster,
-            air_date: sData.air_date || ''
-          }
-        };
-      }
-
-      if (mode === 'episodio') {
-        const eRes = await fetch(
-          `https://api.themoviedb.org/3/tv/${encodeURIComponent(tmdbId)}/season/${encodeURIComponent(temporada)}/episode/${encodeURIComponent(episodio)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES`
-        );
-        if (!eRes.ok) throw new Error(`No se encontró el Episodio ${temporada}x${episodio} en TMDB (${eRes.status})`);
-        const eData = await eRes.json();
-        const serieNombre = baseData.name || baseData.original_name;
-        const nombreEp = eData.name || `Episodio ${episodio}`;
-        const still = eData.still_path || baseData.backdrop_path || '';
-
-        return {
-          postTypeEndpoint: 'episodes',
-          tmdbId,
-          titulo: `${serieNombre}: ${temporada}x${episodio}`,
-          sinopsis: eData.overview || '',
-          fecha: eData.air_date || '',
-          previewPoster: still ? `https://image.tmdb.org/t/p/w500${still}` : '',
-          metaInfo: `${serieNombre} · ${temporada}x${episodio} "${nombreEp}"`,
-          taxonomias: {},
-          meta: {
-            ids: tmdbId,
-            temporada: String(temporada),
-            episodio: String(episodio),
-            episode_name: nombreEp,
-            serie: serieNombre,
-            dt_poster: still,
-            dt_backdrop: still,
-            air_date: eData.air_date || '',
-            runtime: String(eData.runtime || '')
-          }
-        };
-      }
-    }
-
-    async function publicarElementoEnWP({ tmdbId, seccionSlug, streamUrl, formato, tmdbApiKey }) {
-      const info = await consultarTMDBPorModo({
-        mode: 'ficha',
-        idInput: tmdbId,
-        tmdbApiKey,
-        seccionSlug
-      });
-
-      const duplicado = await yaExisteEnWordPress(info.postTypeEndpoint, info.titulo);
-      if (duplicado) {
-        return { estado: 'omitido', titulo: info.titulo };
-      }
-
-      const payload = {
-        title: info.titulo,
-        content: info.sinopsis,
-        status: 'publish',
-        meta: info.meta,
-        dooplay_tax: info.taxonomias
-      };
-
-      const genreId = await obtenerIdGeneroWP(seccionSlug);
-      if (genreId) payload.genres = [genreId];
-
-      const fuente = formatearFuenteDooPlay(streamUrl, 'MorvehTV', 'es', formato || 'iframe');
-      payload.dooplay_players = fuente ? [fuente] : [];
-
-      const wpRes = await wpFetch(`/wp/v2/${info.postTypeEndpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const resultado = await wpRes.json();
-      if (!wpRes.ok) throw new Error(resultado.message || 'Error al publicar en WordPress');
-
-      return { estado: 'publicado', titulo: info.titulo, link: resultado.link };
-    }
-
-    function renderizarCarpetasEnPantalla(carpetas) {
-      const foldersBox = document.getElementById('cloud-folders-container');
-      foldersBox.innerHTML = '';
-
-      carpetas.forEach((carpeta, idx) => {
-        const seccionAuto = carpeta.seccionForzada || deducirSeccionPorCarpeta(carpeta.nombre);
-        const card = document.createElement('div');
-        card.className = 'folder-card';
-
-        const opcionesHtml = Object.entries(SECCIONES_DOOPLAY)
-          .map(([slug, label]) => `<option value="${slug}" ${slug === seccionAuto ? 'selected' : ''}>${label}</option>`)
-          .join('');
-
-        const archivosHtml = (carpeta.archivos || []).map((arch, aIdx) => `
-          <div class="file-item">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🎬 ${arch.nombre}</span>
-            <button type="button" class="btn-sec btn-sync-one" data-cidx="${idx}" data-aidx="${aIdx}" style="padding:4px 9px;font-size:0.78rem;flex-shrink:0;">Publicar</button>
-          </div>
-        `).join('');
-
-        card.innerHTML = `
-          <div class="folder-head">
-            <div>
-              <strong>📁 ${carpeta.nombre}</strong>
-              <div style="font-size:0.8rem;color:#94a3b8;">${(carpeta.archivos || []).length} vídeos detectados</div>
-            </div>
-            <div>
-              <select id="map-sec-${idx}">${opcionesHtml}</select>
-            </div>
-            <div>
-              <button type="button" class="btn-cloud btn-sync-folder" data-cidx="${idx}">Sincronizar carpeta</button>
-            </div>
-          </div>
-          <div class="file-list">${archivosHtml || '<em>Carpeta vacía</em>'}</div>
-        `;
-        foldersBox.appendChild(card);
-      });
-
-      const logBox = document.getElementById('sync-log');
-      const addLog = (html) => {
-        logBox.style.display = 'block';
-        logBox.innerHTML += `<div>${html}</div>`;
-        logBox.scrollTop = logBox.scrollHeight;
-      };
-
-      foldersBox.querySelectorAll('.btn-sync-one').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const cIdx = Number(btn.dataset.cidx);
-          const aIdx = Number(btn.dataset.aidx);
-          const archivo = carpetas[cIdx].archivos[aIdx];
-          const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
-          const tmdbApi = document.getElementById('tmdb-api').value.trim();
-
-          if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
-          btn.disabled = true;
-          btn.textContent = '...';
-
-          try {
-            const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
-            const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
-            const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
-            const r = await publicarElementoEnWP({
-              tmdbId,
-              seccionSlug,
-              streamUrl: archivo.url_embed || archivo.url,
-              formato: archivo.formato || 'iframe',
-              tmdbApiKey: tmdbApi
-            });
-            if (r.estado === 'omitido') {
-              addLog(`⏭️ Ya existía en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: ${r.titulo}`);
-              btn.textContent = 'Ya existe';
-            } else {
-              addLog(`✅ Publicado en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${r.titulo}</a>`);
-              btn.textContent = 'Listo';
-            }
-          } catch (err) {
-            addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
-            btn.disabled = false;
-            btn.textContent = 'Reintentar';
-          }
-        });
-      });
-
-      foldersBox.querySelectorAll('.btn-sync-folder').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const cIdx = Number(btn.dataset.cidx);
-          const carpeta = carpetas[cIdx];
-          const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
-          const tmdbApi = document.getElementById('tmdb-api').value.trim();
-
-          if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
-          btn.disabled = true;
-          btn.textContent = 'Sincronizando...';
-          addLog(`🔄 Iniciando sincronización de <strong>${carpeta.nombre}</strong> → <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>...`);
-
-          for (const archivo of (carpeta.archivos || [])) {
-            try {
-              const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
-              const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
-              const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
-              const r = await publicarElementoEnWP({
-                tmdbId,
-                seccionSlug,
-                streamUrl: archivo.url_embed || archivo.url,
-                formato: archivo.formato || 'iframe',
-                tmdbApiKey: tmdbApi
-              });
-              if (r.estado === 'omitido') {
-                addLog(`⏭️ Ya existía: ${r.titulo}`);
-              } else {
-                addLog(`✅ Publicado: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${r.titulo}</a>`);
-              }
-            } catch (err) {
-              addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
-            }
-          }
-
-          btn.disabled = false;
-          btn.textContent = 'Sincronizar carpeta';
-          addLog(`🏁 Carpeta <strong>${carpeta.nombre}</strong> finalizada.`);
-        });
-      });
-    }
-
     document.addEventListener('DOMContentLoaded', async () => {
       await initSecurityLock();
 
@@ -968,74 +436,25 @@
       });
 
       document.getElementById('btn-lock-now').addEventListener('click', () => {
-        sessionStorage.removeItem('mtv_unlocked');
+        sessionStorage.removeItem('mtv_man_unlocked');
         location.reload();
       });
 
       document.getElementById('btn-wipe-creds').addEventListener('click', () => {
-        if (!confirm('¿Borrar todas las credenciales guardadas en este navegador?')) return;
-        CRED_FIELDS.forEach(id => localStorage.removeItem('mtv_priv_' + id));
-        localStorage.removeItem('mtv_owner_pin_hash');
-        sessionStorage.removeItem('mtv_unlocked');
+        if (!confirm('¿Borrar credenciales guardadas?')) return;
+        CRED_FIELDS.forEach(id => localStorage.removeItem('mtv_man_' + id));
+        localStorage.removeItem('mtv_man_pin_hash');
+        sessionStorage.removeItem('mtv_man_unlocked');
         location.reload();
       });
 
-      const form = document.getElementById('generator-form');
-      const cloudPanel = document.getElementById('cloud-sync-panel');
-      const outputBox = document.getElementById('output');
-      const connStatus = document.getElementById('conn-status');
       const streamInput = document.getElementById('stream-url');
       const formatoSelect = document.getElementById('tipo-formato');
-
       streamInput.addEventListener('input', () => {
         const val = streamInput.value.trim();
         if (!val) return;
-        if (val.startsWith('[') || val.startsWith('<')) formatoSelect.value = 'shortcode';
-        else if (/\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(val) || val.includes('stream.morvehtv.com')) formatoSelect.value = 'mp4';
-        else formatoSelect.value = 'iframe';
-      });
-
-      document.querySelectorAll('.mode-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          const mode = tab.dataset.mode;
-          document.getElementById('publish-mode').value = mode;
-          outputBox.innerHTML = '';
-
-          if (mode === 'nube') {
-            cloudPanel.style.display = 'block';
-            form.style.display = 'none';
-            return;
-          }
-
-          cloudPanel.style.display = 'none';
-          form.style.display = 'block';
-
-          const seBox = document.getElementById('season-episode-fields');
-          const epBox = document.getElementById('episodio-field-box');
-          const playerBox = document.getElementById('player-fields');
-          const seccionWrapper = document.getElementById('seccion-wrapper');
-
-          if (mode === 'ficha') {
-            seBox.style.display = 'none';
-            playerBox.style.display = 'block';
-            streamInput.required = true;
-            seccionWrapper.style.opacity = '1';
-          } else if (mode === 'temporada') {
-            seBox.style.display = 'grid';
-            epBox.style.display = 'none';
-            playerBox.style.display = 'none';
-            streamInput.required = false;
-            seccionWrapper.style.opacity = '0.45';
-          } else {
-            seBox.style.display = 'grid';
-            epBox.style.display = 'block';
-            playerBox.style.display = 'block';
-            streamInput.required = true;
-            seccionWrapper.style.opacity = '0.45';
-          }
-        });
+        if (val.includes('/v/')) formatoSelect.value = 'iframe';
+        else if (/\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(val)) formatoSelect.value = 'mp4';
       });
 
       document.getElementById('btn-test-wp').addEventListener('click', async () => {
@@ -1043,90 +462,51 @@
         const wpUrl = getWpBaseUrl();
         const user = document.getElementById('wp-user').value.trim();
         const pass = document.getElementById('wp-pass').value.trim();
+        const connStatus = document.getElementById('conn-status');
         if (!user || !pass) {
-          connStatus.innerHTML = '<span style="color:#fca5a5;">Escribe tu Usuario y Contraseña de Aplicación primero.</span>';
+          connStatus.innerHTML = '<span style="color:#fca5a5;">Rellena tu usuario y contraseña de aplicación WP.</span>';
           return;
         }
         const btnTest = document.getElementById('btn-test-wp');
         btnTest.disabled = true;
-        connStatus.innerHTML = `<span style="color:#94a3b8;">Conectando con ${wpUrl}...</span>`;
+        connStatus.innerHTML = `<span style="color:#94a3b8;">Verificando conexión con ${wpUrl}...</span>`;
 
         try {
           let res = await wpFetch('/wp/v2/users/me');
           if (res.status === 403 || res.status === 404) {
             res = await wpFetch('/wp/v2/movies?context=edit&per_page=1');
           }
-          if (!res.ok) {
-            let detalle = `HTTP ${res.status}`;
-            try {
-              const errData = await res.json();
-              if (errData.message) detalle += `: ${errData.message}`;
-            } catch (_) {}
-            throw new Error(detalle);
-          }
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const data = await res.json();
           const nombre = data.name || user;
-          connStatus.innerHTML = `<span style="color:#34d399;">✅ Conectado correctamente como <strong>${nombre}</strong> en ${wpUrl}</span>`;
+          connStatus.innerHTML = `<span style="color:#34d399;">✅ Conectado con éxito como <strong>${nombre}</strong></span>`;
         } catch (err) {
-          connStatus.innerHTML = `<span style="color:#fca5a5;">❌ Fallo de conexión (${err.message})</span>`;
+          connStatus.innerHTML = `<span style="color:#fca5a5;">❌ Error de conexión (${err.message})</span>`;
         } finally {
           btnTest.disabled = false;
         }
       });
 
-      // ESCANEAR CARPETAS DE NUBE.MORVEHTV.COM VIA PUENTE WP
-      document.getElementById('btn-scan-cloud').addEventListener('click', async () => {
-        saveAllLocal();
-        const foldersBox = document.getElementById('cloud-folders-container');
-        foldersBox.innerHTML = '<div style="color:#94a3b8;margin:10px 0;">Conectando con nube.morvehtv.com a través de WordPress...</div>';
-
-        try {
-          const carpetas = await listarCarpetasNube();
-          if (!carpetas.length) {
-            foldersBox.innerHTML = '<div style="color:#fca5a5;">No se encontraron vídeos en esa carpeta compartida.</div>';
-            return;
-          }
-          renderizarCarpetasEnPantalla(carpetas);
-        } catch (err) {
-          foldersBox.innerHTML = `<div style="padding:12px;background:#3b1518;color:#fca5a5;border-radius:8px;margin-bottom:10px;">⚠️ ${err.message}</div>`;
-        }
-      });
-
-      // CARGAR LISTA EN LOTE (SIN CORS)
-      document.getElementById('btn-load-batch').addEventListener('click', () => {
-        const texto = document.getElementById('batch-links').value;
-        const seccion = document.getElementById('batch-section').value;
-        const foldersBox = document.getElementById('cloud-folders-container');
-        const carpetas = parsearListaManual(texto, seccion);
-        if (!carpetas.length) {
-          foldersBox.innerHTML = '<div style="color:#fca5a5;">Pega al menos una línea con formato: Título (Año) | https://nube.morvehtv.com/v/...</div>';
-          return;
-        }
-        renderizarCarpetasEnPantalla(carpetas);
-      });
-
       document.getElementById('btn-check').addEventListener('click', async () => {
         const tmdbApi = document.getElementById('tmdb-api').value.trim();
         const idInput = document.getElementById('tmdb-id').value.trim();
-        const mode = document.getElementById('publish-mode').value;
         const seccionSlug = document.getElementById('seccion').value;
-        const temporada = document.getElementById('num-temporada').value;
-        const episodio = document.getElementById('num-episodio').value;
+        const outputBox = document.getElementById('output');
 
         if (!tmdbApi || !idInput) {
-          outputBox.innerHTML = '<div style="color:#fca5a5;">Introduce tu API Key de TMDB y un ID primero.</div>';
+          outputBox.innerHTML = '<div style="color:#fca5a5;">Introduce la API Key de TMDB y el ID.</div>';
           return;
         }
 
         const btnCheck = document.getElementById('btn-check');
         btnCheck.disabled = true;
-        outputBox.innerHTML = '<div style="color:#94a3b8;">Consultando ficha en castellano...</div>';
+        outputBox.innerHTML = '<div style="color:#94a3b8;">Consultando TMDB en español...</div>';
         try {
-          const info = await consultarTMDBPorModo({ mode, idInput, tmdbApiKey: tmdbApi, seccionSlug, temporada, episodio });
+          const info = await consultarTMDB(idInput, tmdbApi, seccionSlug);
           document.getElementById('prev-poster').src = info.previewPoster;
           document.getElementById('prev-title').textContent = info.titulo;
           document.getElementById('prev-meta').textContent = info.metaInfo;
-          document.getElementById('prev-overview').textContent = info.sinopsis || 'Sin sinopsis disponible en español.';
+          document.getElementById('prev-overview').textContent = info.sinopsis || 'Sin sinopsis disponible.';
           document.getElementById('preview-card').style.display = 'flex';
           outputBox.innerHTML = '';
         } catch (err) {
@@ -1136,44 +516,43 @@
         }
       });
 
+      const form = document.getElementById('generator-form');
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         saveAllLocal();
         const btn = form.querySelector('button[type="submit"]');
+        const outputBox = document.getElementById('output');
         btn.disabled = true;
-        outputBox.innerHTML = '<div style="color:#94a3b8;">Publicando en MorvehTV y vinculando con DooPlay...</div>';
+        outputBox.innerHTML = '<div style="color:#94a3b8;">Publicando en WordPress y vinculando enlace de nube...</div>';
 
         try {
           const tmdbApi = document.getElementById('tmdb-api').value.trim();
           const idInput = document.getElementById('tmdb-id').value.trim();
-          const mode = document.getElementById('publish-mode').value;
           const seccionSlug = document.getElementById('seccion').value;
-          const temporada = document.getElementById('num-temporada').value;
-          const episodio = document.getElementById('num-episodio').value;
-          const nombreServidor = document.getElementById('servidor-nombre').value.trim() || 'MorvehTV';
+          const servidorNombre = document.getElementById('servidor-nombre').value.trim() || 'MorvehTV';
           const tipoFormato = document.getElementById('tipo-formato').value;
           const idioma = document.getElementById('idioma').value;
           const streamUrl = document.getElementById('stream-url').value.trim();
 
-          const info = await consultarTMDBPorModo({ mode, idInput, tmdbApiKey: tmdbApi, seccionSlug, temporada, episodio });
+          const info = await consultarTMDB(idInput, tmdbApi, seccionSlug);
 
           const payload = {
             title: info.titulo,
             content: info.sinopsis,
             status: 'publish',
-            meta: info.meta
+            meta: info.meta,
+            dooplay_tax: info.taxonomias
           };
 
-          if (mode === 'ficha') {
-            const genreId = await obtenerIdGeneroWP(seccionSlug);
-            if (genreId) payload.genres = [genreId];
-            payload.dooplay_tax = info.taxonomias;
-          }
+          const genreId = await obtenerIdGeneroWP(seccionSlug);
+          if (genreId) payload.genres = [genreId];
 
-          if (mode !== 'temporada') {
-            const fuente = formatearFuenteDooPlay(streamUrl, nombreServidor, idioma, tipoFormato);
-            payload.dooplay_players = fuente ? [fuente] : [];
-          }
+          payload.dooplay_players = [{
+            name: servidorNombre,
+            select: tipoFormato,
+            idioma: idioma,
+            url: streamUrl
+          }];
 
           const wpRes = await wpFetch(`/wp/v2/${info.postTypeEndpoint}`, {
             method: 'POST',
@@ -1186,15 +565,15 @@
 
           outputBox.innerHTML = `
             <div style="padding:14px;background:#163020;color:#a7f3d0;border-radius:8px;">
-              <strong>Publicado correctamente en DooPlay:</strong> ${info.titulo}<br>
-              <strong>Tipo:</strong> ${info.postTypeEndpoint} · <strong>Formato:</strong> <code>${tipoFormato}</code><br>
-              <a href="${resultado.link}" target="_blank" style="color:#38bdf8;font-weight:600;">Abrir en MorvehTV →</a>
+              <strong>✅ Publicado con éxito en DooPlay:</strong> ${info.titulo}<br>
+              <strong>Reproductor de Nube:</strong> <code>${streamUrl}</code><br>
+              <a href="${resultado.link}" target="_blank" style="color:#38bdf8;font-weight:600;">Ver publicación en MorvehTV →</a>
             </div>
           `;
         } catch (err) {
           outputBox.innerHTML = `
             <div style="padding:12px;background:#3b1518;color:#fca5a5;border-radius:8px;">
-              <strong>Error:</strong> ${err.message}
+              <strong>❌ Error:</strong> ${err.message}
             </div>
           `;
         } finally {
