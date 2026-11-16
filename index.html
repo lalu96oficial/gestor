@@ -233,64 +233,32 @@
 
     <label>Modo de trabajo</label>
     <div class="mode-tabs">
-      <button type="button" class="mode-tab active" data-mode="nube">Sincronizar Nueva Nube</button>
+      <button type="button" class="mode-tab active" data-mode="nube">Sincronizar Carpetas Nube</button>
       <button type="button" class="mode-tab" data-mode="ficha">Película / Ficha Manual</button>
       <button type="button" class="mode-tab" data-mode="temporada">Temporada (Season)</button>
       <button type="button" class="mode-tab" data-mode="episodio">Episodio Individual</button>
     </div>
     <input type="hidden" id="publish-mode" value="nube" />
 
-    <!-- PANEL 1: CONEXIÓN PRIVADA CON TU NUEVA NUBE -->
+    <!-- PANEL 1: CONEXIÓN PRIVADA CON NUBE.MORVEHTV.COM -->
     <div id="cloud-sync-panel">
       <div class="vault-box">
-        <div class="grid">
-          <div class="field">
-            <label for="cloud-driver">Modo de conexión con tu Nube</label>
-            <select id="cloud-driver">
-              <option value="openlist">OpenList / AList (Usuario y Contraseña)</option>
-              <option value="custom_json">API JSON Propia (/api/catalogo)</option>
-            </select>
+        <div class="grid-auth" style="grid-template-columns: 1.4fr 1fr 1fr auto;">
+          <div class="field" style="margin-bottom:0;">
+            <label for="cloud-host">URL de tu Nube</label>
+            <input type="url" id="cloud-host" value="https://nube.morvehtv.com" placeholder="https://nube.morvehtv.com" />
           </div>
-          <div class="field">
-            <label for="cloud-host">URL Base de la Nube</label>
-            <input type="url" id="cloud-host" placeholder="https://nube.morvehtv.com" />
+          <div class="field" style="margin-bottom:0;">
+            <label for="cj-user">Usuario Nube (opcional)</label>
+            <input type="text" id="cj-user" placeholder="Opcional" />
           </div>
-        </div>
-
-        <!-- Campos OpenList / AList -->
-        <div id="driver-openlist-fields">
-          <div class="grid-player">
-            <div class="field" style="margin-bottom:0;">
-              <label for="ol-user">Usuario de la Nube</label>
-              <input type="text" id="ol-user" placeholder="Tu usuario de la nube" />
-            </div>
-            <div class="field" style="margin-bottom:0;">
-              <label for="ol-pass">Contraseña de la Nube</label>
-              <input type="password" id="ol-pass" placeholder="Tu contraseña privada" />
-            </div>
-            <div class="field" style="margin-bottom:0;">
-              <label for="ol-root">Carpeta raíz a escanear</label>
-              <input type="text" id="ol-root" value="/" placeholder="/" />
-            </div>
+          <div class="field" style="margin-bottom:0;">
+            <label for="cj-key">Clave / Token Nube (opcional)</label>
+            <input type="password" id="cj-key" placeholder="X-Api-Key o contraseña" />
           </div>
-        </div>
-
-        <!-- Campos API JSON Propia -->
-        <div id="driver-custom-fields" style="display:none;">
-          <div class="grid">
-            <div class="field" style="margin-bottom:0;">
-              <label for="cj-user">Usuario (opcional)</label>
-              <input type="text" id="cj-user" placeholder="Usuario o vacío si solo usas clave" />
-            </div>
-            <div class="field" style="margin-bottom:0;">
-              <label for="cj-key">Contraseña / Token / X-Api-Key</label>
-              <input type="password" id="cj-key" placeholder="Tu clave privada de la nube" />
-            </div>
+          <div class="field" style="margin-bottom:0;">
+            <button type="button" id="btn-scan-cloud" class="btn-cloud">Escanear carpetas</button>
           </div>
-        </div>
-
-        <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-          <button type="button" id="btn-scan-cloud" class="btn-cloud">Conectar y escanear carpetas</button>
         </div>
       </div>
 
@@ -393,9 +361,7 @@
 
     const CRED_FIELDS = [
       'wp-url', 'wp-user', 'wp-pass', 'tmdb-api',
-      'cloud-driver', 'cloud-host',
-      'ol-user', 'ol-pass', 'ol-root',
-      'cj-user', 'cj-key'
+      'cloud-host', 'cj-user', 'cj-key'
     ];
 
     function saveAllLocal() {
@@ -467,68 +433,15 @@
       pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockAction(); });
     }
 
-    // CONEXIÓN CON TU NUBE (OPENLIST / ALIST O API JSON PROPIA)
-    async function listarCarpetasOpenList() {
-      const host = document.getElementById('cloud-host').value.trim().replace(/\/+$/, '');
-      const username = document.getElementById('ol-user').value.trim();
-      const password = document.getElementById('ol-pass').value;
-      const rootPath = document.getElementById('ol-root').value.trim() || '/';
-
-      if (!host || !username || !password) {
-        throw new Error('Completa la URL, Usuario y Contraseña de tu nube.');
-      }
-
-      const loginRes = await fetch(`${host}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const loginData = await loginRes.json();
-      const token = loginData?.data?.token;
-      if (!token) throw new Error(loginData?.message || 'Error de autenticación en la nube.');
-
-      const listRes = await fetch(`${host}/api/fs/list`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token },
-        body: JSON.stringify({ path: rootPath, refresh: false })
-      });
-      const listData = await listRes.json();
-      const items = listData?.data?.content || [];
-
-      const carpetas = [];
-      for (const item of items) {
-        if (!item.is_dir) continue;
-        const dirPath = `${rootPath.replace(/\/$/, '')}/${item.name}`;
-        const subRes = await fetch(`${host}/api/fs/list`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': token },
-          body: JSON.stringify({ path: dirPath, refresh: false })
-        });
-        const subData = await subRes.json();
-        const files = (subData?.data?.content || [])
-          .filter(f => !f.is_dir && /\.(mp4|mkv|webm|m3u8)$/i.test(f.name))
-          .map(f => {
-            const fullPath = `${dirPath}/${f.name}`.split('/').map(encodeURIComponent).join('/');
-            const signParam = f.sign ? `?sign=${encodeURIComponent(f.sign)}` : '';
-            return {
-              nombre: f.name,
-              url: `${host}/d${fullPath}${signParam}`,
-              formato: 'mp4'
-            };
-          });
-        carpetas.push({ nombre: item.name, archivos: files });
-      }
-      return carpetas;
-    }
-
-    async function listarCarpetasCustomJson() {
-      const base = document.getElementById('cloud-host').value.trim().replace(/\/+$/, '');
+    // CONEXIÓN CON NUBE.MORVEHTV.COM (/api/catalogo)
+    async function listarCarpetasNube() {
+      const raw = document.getElementById('cloud-host').value.trim() || 'https://nube.morvehtv.com';
+      const base = raw.replace(/\/+$/, '');
       const user = document.getElementById('cj-user').value.trim();
       const key = document.getElementById('cj-key').value.trim();
-      if (!base) throw new Error('Introduce la URL de tu nube.');
 
-      const endpoint = base.endsWith('/api/catalogo') ? base : `${base}/api/catalogo`;
-      const headers = {};
+      const endpoint = base.includes('/api/') ? base : `${base}/api/catalogo`;
+      const headers = { 'Accept': 'application/json' };
       if (user && key) {
         headers['Authorization'] = 'Basic ' + btoa(`${user}:${key}`);
       } else if (key) {
@@ -536,7 +449,13 @@
       }
 
       const res = await fetch(endpoint, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status} al leer ${endpoint}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} al consultar ${endpoint}`);
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error(`La ruta ${endpoint} devolvió HTML en lugar de JSON. Ejecuta el prompt de /api/catalogo en Claude Code dentro de nube.morvehtv.com.`);
+      }
+
       const data = await res.json();
       return data.carpetas || [];
     }
@@ -820,7 +739,7 @@
       const genreId = await obtenerIdGeneroWP(seccionSlug);
       if (genreId) payload.genres = [genreId];
 
-      const fuente = formatearFuenteDooPlay(streamUrl, 'MorvehTV', 'es', formato || 'mp4');
+      const fuente = formatearFuenteDooPlay(streamUrl, 'MorvehTV', 'es', formato || 'iframe');
       payload.dooplay_players = fuente ? [fuente] : [];
 
       const wpRes = await wpFetch(`/wp/v2/${info.postTypeEndpoint}`, {
@@ -837,15 +756,6 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       await initSecurityLock();
-
-      const driverSelect = document.getElementById('cloud-driver');
-      const updateDriverUI = () => {
-        const val = driverSelect.value;
-        document.getElementById('driver-openlist-fields').style.display = val === 'openlist' ? 'block' : 'none';
-        document.getElementById('driver-custom-fields').style.display = val === 'custom_json' ? 'block' : 'none';
-      };
-      driverSelect.addEventListener('change', updateDriverUI);
-      updateDriverUI();
 
       CRED_FIELDS.forEach(id => {
         const el = document.getElementById(id);
@@ -959,16 +869,14 @@
         }
       });
 
+      // ESCANEAR CARPETAS DE NUBE.MORVEHTV.COM
       document.getElementById('btn-scan-cloud').addEventListener('click', async () => {
         saveAllLocal();
-        const driver = driverSelect.value;
         const foldersBox = document.getElementById('cloud-folders-container');
-        foldersBox.innerHTML = '<div style="color:#94a3b8;margin:10px 0;">Conectando con tus credenciales privadas y leyendo carpetas...</div>';
+        foldersBox.innerHTML = '<div style="color:#94a3b8;margin:10px 0;">Conectando con nube.morvehtv.com y leyendo carpetas...</div>';
 
         try {
-          let carpetas = [];
-          if (driver === 'openlist') carpetas = await listarCarpetasOpenList();
-          else carpetas = await listarCarpetasCustomJson();
+          const carpetas = await listarCarpetasNube();
 
           if (!carpetas.length) {
             foldersBox.innerHTML = '<div style="color:#fca5a5;">No se encontraron carpetas con vídeos en la nube.</div>';
@@ -1037,7 +945,7 @@
                   tmdbId,
                   seccionSlug,
                   streamUrl: archivo.url_embed || archivo.url,
-                  formato: archivo.formato || 'mp4',
+                  formato: archivo.formato || 'iframe',
                   tmdbApiKey: tmdbApi
                 });
                 if (r.estado === 'omitido') {
@@ -1076,7 +984,7 @@
                     tmdbId,
                     seccionSlug,
                     streamUrl: archivo.url_embed || archivo.url,
-                    formato: archivo.formato || 'mp4',
+                    formato: archivo.formato || 'iframe',
                     tmdbApiKey: tmdbApi
                   });
                   if (r.estado === 'omitido') {
