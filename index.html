@@ -36,6 +36,7 @@
     h1 { margin: 0 0 6px; font-size: 1.4rem; }
     p.sub { margin: 0 0 18px; color: var(--muted); font-size: 0.9rem; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-player { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .grid-auth { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
     .grid-3 { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: end; }
     .field { margin-bottom: 14px; }
@@ -187,10 +188,18 @@
 
       <!-- Campos de vídeo -->
       <div id="player-fields">
-        <div class="grid">
+        <div class="grid-player">
           <div class="field">
             <label for="servidor-nombre">Nombre del Servidor</label>
             <input type="text" id="servidor-nombre" value="MorvehTV" />
+          </div>
+          <div class="field">
+            <label for="tipo-formato">Tipo de Formato</label>
+            <select id="tipo-formato">
+              <option value="iframe">URL Embed</option>
+              <option value="mp4">URL MP4</option>
+              <option value="shortcode">Shortcode or HTML</option>
+            </select>
           </div>
           <div class="field">
             <label for="idioma">Idioma del Vídeo</label>
@@ -203,8 +212,8 @@
         </div>
 
         <div class="field">
-          <label for="stream-url">Enlace directo (stream.morvehtv.com / nube.morvehtv.com / MP4)</label>
-          <input type="url" id="stream-url" placeholder="https://stream.morvehtv.com/... o https://nube.morvehtv.com/..." required />
+          <label for="stream-url">Enlace / Código del Reproductor</label>
+          <input type="text" id="stream-url" placeholder="https://nube.morvehtv.com/v/... o https://stream.morvehtv.com/...mp4" required />
         </div>
       </div>
 
@@ -234,27 +243,13 @@
       return 'Basic ' + btoa(`${user}:${pass}`);
     }
 
-    function formatearFuenteDooPlay(rawUrl, nombreServidor = 'MorvehTV', idioma = 'es') {
+    function formatearFuenteDooPlay(rawUrl, nombreServidor = 'MorvehTV', idioma = 'es', tipoFormato = 'iframe') {
       const urlLimpia = rawUrl.trim();
       if (!urlLimpia) return null;
 
-      const esStreamDirecto =
-        urlLimpia.includes('stream.morvehtv.com') ||
-        urlLimpia.includes('nube.morvehtv.com') ||
-        /\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(urlLimpia);
-
-      if (esStreamDirecto && !urlLimpia.startsWith('[jotta_player')) {
-        return {
-          name: nombreServidor,
-          select: 'shortcode',
-          idioma: idioma,
-          url: `[jotta_player url="${urlLimpia}"]`
-        };
-      }
-
       return {
         name: nombreServidor,
-        select: urlLimpia.startsWith('[') ? 'shortcode' : 'iframe',
+        select: tipoFormato, // 'iframe' (URL Embed) | 'mp4' (URL MP4) | 'shortcode' (Shortcode or HTML)
         idioma: idioma,
         url: urlLimpia
       };
@@ -296,7 +291,6 @@
       return null;
     }
 
-    // Consulta datos según el modo: ficha (movie/tv), temporada (season) o episodio (episode)
     async function consultarTMDBPorModo({ mode, idInput, tmdbApiKey, seccionSlug, temporada, episodio }) {
       const esSerie = mode !== 'ficha' || ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
       const endpointTipo = esSerie ? 'tv' : 'movie';
@@ -442,6 +436,21 @@
       const form = document.getElementById('generator-form');
       const outputBox = document.getElementById('output');
       const connStatus = document.getElementById('conn-status');
+      const streamInput = document.getElementById('stream-url');
+      const formatoSelect = document.getElementById('tipo-formato');
+
+      // Auto-detecta el formato sugerido al pegar o escribir la URL, pero deja cambiarlo manualmente
+      streamInput.addEventListener('input', () => {
+        const val = streamInput.value.trim();
+        if (!val) return;
+        if (val.startsWith('[') || val.startsWith('<')) {
+          formatoSelect.value = 'shortcode';
+        } else if (/\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(val) || val.includes('stream.morvehtv.com')) {
+          formatoSelect.value = 'mp4';
+        } else {
+          formatoSelect.value = 'iframe';
+        }
+      });
 
       document.querySelectorAll('.mode-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -453,7 +462,6 @@
           const seBox = document.getElementById('season-episode-fields');
           const epBox = document.getElementById('episodio-field-box');
           const playerBox = document.getElementById('player-fields');
-          const streamInput = document.getElementById('stream-url');
           const seccionWrapper = document.getElementById('seccion-wrapper');
 
           if (mode === 'ficha') {
@@ -547,6 +555,7 @@
           const temporada = document.getElementById('num-temporada').value;
           const episodio = document.getElementById('num-episodio').value;
           const nombreServidor = document.getElementById('servidor-nombre').value.trim() || 'MorvehTV';
+          const tipoFormato = document.getElementById('tipo-formato').value;
           const idioma = document.getElementById('idioma').value;
           const streamUrl = document.getElementById('stream-url').value.trim();
 
@@ -571,7 +580,7 @@
           }
 
           if (mode !== 'temporada') {
-            const fuente = formatearFuenteDooPlay(streamUrl, nombreServidor, idioma);
+            const fuente = formatearFuenteDooPlay(streamUrl, nombreServidor, idioma, tipoFormato);
             payload.dooplay_players = fuente ? [fuente] : [];
           }
 
@@ -587,7 +596,7 @@
           outputBox.innerHTML = `
             <div style="padding:14px;background:#163020;color:#a7f3d0;border-radius:8px;">
               <strong>Publicado correctamente en DooPlay:</strong> ${info.titulo}<br>
-              <strong>Tipo:</strong> ${info.postTypeEndpoint} · <strong>ID TMDB vinculado:</strong> <code>${info.tmdbId}</code><br>
+              <strong>Tipo:</strong> ${info.postTypeEndpoint} · <strong>Formato:</strong> <code>${tipoFormato}</code><br>
               <a href="${resultado.link}" target="_blank" style="color:#38bdf8;font-weight:600;">Abrir en MorvehTV →</a>
             </div>
           `;
