@@ -185,7 +185,7 @@
         </div>
       </div>
 
-      <!-- Campos de vídeo (ocultos en modo Temporada completa porque la temporada solo agrupa episodios) -->
+      <!-- Campos de vídeo -->
       <div id="player-fields">
         <div class="grid">
           <div class="field">
@@ -203,8 +203,8 @@
         </div>
 
         <div class="field">
-          <label for="stream-url">Enlace directo (stream.morvehtv.com / MP4 / MKV)</label>
-          <input type="url" id="stream-url" placeholder="https://stream.morvehtv.com/..." required />
+          <label for="stream-url">Enlace directo (stream.morvehtv.com / nube.morvehtv.com / MP4)</label>
+          <input type="url" id="stream-url" placeholder="https://stream.morvehtv.com/... o https://nube.morvehtv.com/..." required />
         </div>
       </div>
 
@@ -240,6 +240,7 @@
 
       const esStreamDirecto =
         urlLimpia.includes('stream.morvehtv.com') ||
+        urlLimpia.includes('nube.morvehtv.com') ||
         /\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(urlLimpia);
 
       if (esStreamDirecto && !urlLimpia.startsWith('[jotta_player')) {
@@ -274,6 +275,7 @@
       return String(resultados[0].id);
     }
 
+    // Busca el género existente en WordPress sin crear nunca ninguno nuevo
     async function obtenerIdGeneroWP(slugGenero, authHeader) {
       const res = await fetch(`${WP_URL}/wp-json/wp/v2/genres?slug=${encodeURIComponent(slugGenero)}`, {
         headers: { 'Authorization': authHeader }
@@ -283,13 +285,15 @@
       if (Array.isArray(data) && data.length > 0) return data[0].id;
 
       const nombre = SECCIONES_DOOPLAY[slugGenero] || slugGenero;
-      const createRes = await fetch(`${WP_URL}/wp-json/wp/v2/genres`, {
-        method: 'POST',
-        headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: nombre, slug: slugGenero })
+      const resSearch = await fetch(`${WP_URL}/wp-json/wp/v2/genres?search=${encodeURIComponent(nombre)}`, {
+        headers: { 'Authorization': authHeader }
       });
-      const created = await createRes.json();
-      return created.id;
+      if (resSearch.ok) {
+        const searchData = await resSearch.json();
+        if (Array.isArray(searchData) && searchData.length > 0) return searchData[0].id;
+      }
+
+      return null;
     }
 
     // Consulta datos según el modo: ficha (movie/tv), temporada (season) o episodio (episode)
@@ -298,7 +302,6 @@
       const endpointTipo = esSerie ? 'tv' : 'movie';
       const tmdbId = await resolverTmdbId(idInput, tmdbApiKey, endpointTipo);
 
-      // Datos base de la película o de la serie madre
       const baseRes = await fetch(
         `https://api.themoviedb.org/3/${endpointTipo}/${encodeURIComponent(tmdbId)}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES&append_to_response=videos,credits,images&include_image_language=es,en,null`
       );
@@ -403,7 +406,6 @@
 
         const serieNombre = baseData.name || baseData.original_name;
         const nombreEp = eData.name || `Episodio ${episodio}`;
-        // Formato estándar de título de episodio en DooPlay: "Nombre Serie: 1x1"
         const tituloEpisodio = `${serieNombre}: ${temporada}x${episodio}`;
         const still = eData.still_path || baseData.backdrop_path || '';
 
@@ -441,7 +443,6 @@
       const outputBox = document.getElementById('output');
       const connStatus = document.getElementById('conn-status');
 
-      // Cambio de pestañas: Ficha / Temporada / Episodio
       document.querySelectorAll('.mode-tab').forEach(tab => {
         tab.addEventListener('click', () => {
           document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
@@ -476,7 +477,6 @@
         });
       });
 
-      // Probar conexión WP
       document.getElementById('btn-test-wp').addEventListener('click', async () => {
         const user = document.getElementById('wp-user').value.trim();
         const pass = document.getElementById('wp-pass').value.trim();
@@ -500,7 +500,6 @@
         }
       });
 
-      // Vista previa
       document.getElementById('btn-check').addEventListener('click', async () => {
         const tmdbApi = document.getElementById('tmdb-api').value.trim();
         const idInput = document.getElementById('tmdb-id').value.trim();
@@ -532,7 +531,6 @@
         }
       });
 
-      // Publicación en WordPress
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = form.querySelector('button[type="submit"]');
@@ -568,7 +566,7 @@
 
           if (mode === 'ficha') {
             const genreId = await obtenerIdGeneroWP(seccionSlug, authHeader);
-            payload.genres = [genreId];
+            if (genreId) payload.genres = [genreId];
             payload.dooplay_tax = info.taxonomias;
           }
 
