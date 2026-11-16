@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MorvehTV · Gestor Manual Sincronizado</title>
+  <title>MorvehTV · Gestor y Sincronizador de Nube</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -14,6 +14,7 @@
       --accent: #3b82f6;
       --accent-hover: #2563eb;
       --green: #10b981;
+      --purple: #8b5cf6;
     }
     * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
     body {
@@ -26,7 +27,7 @@
     }
     .container {
       width: 100%;
-      max-width: 820px;
+      max-width: 860px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -72,10 +73,34 @@
     button:disabled { opacity: 0.6; cursor: not-allowed; }
     button.btn-sec { background: #334155; }
     button.btn-sec:hover { background: #475569; }
+    button.btn-cloud { background: var(--purple); }
+    button.btn-cloud:hover { background: #7c3aed; }
     button.btn-danger { background: #7f1d1d; }
     button.btn-danger:hover { background: #991b1b; }
     button.btn-publish { width: 100%; margin-top: 8px; padding: 13px; font-size: 1rem; background: var(--green); }
     button.btn-publish:hover { background: #059669; }
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+      background: #0b0e14;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .mode-tab {
+      background: transparent;
+      color: var(--muted);
+      padding: 10px;
+      border-radius: 7px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .mode-tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
     #conn-status { font-size: 0.85rem; margin-bottom: 14px; line-height: 1.45; }
     #preview-card {
       display: none;
@@ -94,46 +119,63 @@
       border-radius: 6px;
       background: #1e293b;
     }
-    #output { margin-top: 14px; font-size: 0.92rem; line-height: 1.5; }
-    #lock-screen {
-      max-width: 420px;
-      width: 100%;
-      background: var(--card);
+    .folder-card {
+      background: #0b0e14;
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 26px;
-      text-align: center;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
     }
+    .folder-head {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .file-list {
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 0.84rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      gap: 8px;
+    }
+    #sync-log {
+      margin-top: 12px;
+      padding: 12px;
+      background: #0b0e14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    #output { margin-top: 14px; font-size: 0.92rem; line-height: 1.5; }
     @media (max-width: 720px) {
-      .grid-auth, .grid-3, .grid-player, .grid { grid-template-columns: 1fr; }
+      .grid-auth, .grid-3, .grid-player, .grid, .folder-head { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <!-- PANTALLA DE BLOQUEO PRIVADA -->
-  <div id="lock-screen" style="display:none;">
-    <h2 style="margin:0 0 8px;font-size:1.25rem;">Acceso Privado · MorvehTV</h2>
-    <p id="lock-desc" style="color:#94a3b8;font-size:0.88rem;margin:0 0 16px;">
-      Introduce tu clave privada local para desbloquear tus credenciales.
-    </p>
-    <div class="field">
-      <input type="password" id="pin-input" placeholder="Clave privada" />
-    </div>
-    <button type="button" id="btn-unlock" style="width:100%;">Entrar al Gestor</button>
-    <div id="lock-err" style="color:#fca5a5;font-size:0.84rem;margin-top:10px;"></div>
-  </div>
-
-  <!-- PANEL PRINCIPAL -->
-  <div class="container" id="main-app" style="display:none;">
+  <!-- PANEL PRINCIPAL (DIRECTO SIN CONTRASEÑA) -->
+  <div class="container" id="main-app">
     <div class="top-bar">
-      <h1>MorvehTV · Gestor Manual Sincronizado</h1>
-      <div style="display:flex;gap:8px;">
-        <button type="button" id="btn-lock-now" class="btn-sec" style="padding:7px 11px;font-size:0.82rem;">Bloquear</button>
+      <h1>MorvehTV · Gestor y Sincronizador de Nube</h1>
+      <div>
         <button type="button" id="btn-wipe-creds" class="btn-danger" style="padding:7px 11px;font-size:0.82rem;">Borrar datos</button>
       </div>
     </div>
-    <p class="sub">Publicación sincronizada con WordPress y TMDB (en español) con reproductor interactivo de streaming.</p>
+    <p class="sub">Publicación sincronizada con WordPress, TMDB (en español) y tu nube sin bloqueos CORS[cite: 1].</p>
 
     <!-- CREDENCIALES WP -->
     <div class="grid-auth">
@@ -160,10 +202,28 @@
       <input type="password" id="tmdb-api" placeholder="Pega tu API Key de TMDB" required />
     </div>
 
-    <hr style="border:0;border-top:1px solid var(--border);margin:16px 0;" />
+    <label>Modo de trabajo</label>
+    <div class="mode-tabs">
+      <button type="button" class="mode-tab active" data-mode="nube">📥 Escanear Carpeta de la Nube</button>
+      <button type="button" class="mode-tab" data-mode="manual">🎬 Publicación Manual Directa</button>
+    </div>
+    <input type="hidden" id="publish-mode" value="nube" />
 
-    <!-- FORMULARIO PRINCIPAL -->
-    <form id="generator-form">
+    <!-- SECCIÓN 1: ESCANEAR CARPETA DE LA NUBE VIA PUENTE WORDPRESS -->
+    <div id="cloud-sync-panel">
+      <div class="field" style="margin-bottom:10px;">
+        <label for="cloud-folder-url">Enlace Público de la Carpeta en la Nube (`https://nube.morvehtv.com/s/...`)</label>
+        <div style="display:grid;grid-template-columns: 1fr auto;gap:10px;">
+          <input type="url" id="cloud-folder-url" value="https://nube.morvehtv.com/s/" placeholder="https://nube.morvehtv.com/s/TU_TOKEN" />
+          <button type="button" id="btn-scan-cloud" class="btn-cloud">Escanear carpeta</button>
+        </div>
+      </div>
+      <div id="cloud-folders-container"></div>
+      <div id="sync-log"></div>
+    </div>
+
+    <!-- SECCIÓN 2: FORMULARIO MANUAL -->
+    <form id="generator-form" style="display:none;">
       <div class="grid-3">
         <div class="field">
           <label for="tmdb-id">ID de TMDB o IMDb (Ej. 1399 o tt0944947)</label>
@@ -242,7 +302,7 @@
       'telenovelas': 'Telenovelas'
     };
 
-    const CRED_FIELDS = ['wp-url', 'wp-user', 'wp-pass', 'tmdb-api', 'servidor-nombre'];
+    const CRED_FIELDS = ['wp-url', 'wp-user', 'wp-pass', 'tmdb-api', 'servidor-nombre', 'cloud-folder-url'];
 
     function saveAllLocal() {
       CRED_FIELDS.forEach(id => {
@@ -257,55 +317,6 @@
         const val = localStorage.getItem('mtv_man_' + id);
         if (el && val !== null) el.value = val;
       });
-    }
-
-    async function sha256Hex(str) {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    async function initSecurityLock() {
-      const lockScreen = document.getElementById('lock-screen');
-      const mainApp = document.getElementById('main-app');
-      const pinInput = document.getElementById('pin-input');
-      const lockErr = document.getElementById('lock-err');
-      const storedHash = localStorage.getItem('mtv_man_pin_hash');
-
-      if (sessionStorage.getItem('mtv_man_unlocked') === '1' && storedHash) {
-        lockScreen.style.display = 'none';
-        mainApp.style.display = 'block';
-        loadAllLocal();
-        return;
-      }
-
-      lockScreen.style.display = 'block';
-      mainApp.style.display = 'none';
-
-      const unlockAction = async () => {
-        const pin = pinInput.value.trim();
-        if (pin.length < 4) {
-          lockErr.textContent = 'Mínimo 4 caracteres.';
-          return;
-        }
-        const hash = await sha256Hex(pin);
-        if (!storedHash) {
-          localStorage.setItem('mtv_man_pin_hash', hash);
-          sessionStorage.setItem('mtv_man_unlocked', '1');
-          lockScreen.style.display = 'none';
-          mainApp.style.display = 'block';
-          loadAllLocal();
-        } else if (hash === storedHash) {
-          sessionStorage.setItem('mtv_man_unlocked', '1');
-          lockScreen.style.display = 'none';
-          mainApp.style.display = 'block';
-          loadAllLocal();
-        } else {
-          lockErr.textContent = 'Clave incorrecta.';
-        }
-      };
-
-      document.getElementById('btn-unlock').addEventListener('click', unlockAction);
-      pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockAction(); });
     }
 
     function getWpBaseUrl() {
@@ -336,6 +347,93 @@
         credentials: 'omit',
         headers
       });
+    }
+
+    async function listarCarpetasNube() {
+      const raw = document.getElementById('cloud-folder-url').value.trim();
+      if (!raw) throw new Error('Pega el enlace público de la carpeta (ej. https://nube.morvehtv.com/s/TU_TOKEN)');
+
+      const base = raw.replace(/\/+$/, '');
+      let targetUrl = '';
+      const shareMatch = base.match(/^(https?:\/\/[^/]+)\/s\/([^/?#]+)/i);
+      if (shareMatch) {
+        targetUrl = `${shareMatch[1]}/api/public/${encodeURIComponent(shareMatch[2])}`;
+      } else {
+        targetUrl = base;
+      }
+
+      const wpRes = await wpFetch('/morvehtv/v1/nube-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: targetUrl })
+      });
+
+      if (!wpRes.ok) {
+        let detalle = `HTTP ${wpRes.status}`;
+        try {
+          const e = await wpRes.json();
+          if (e.message) detalle += `: ${e.message}`;
+        } catch (_) {}
+        throw new Error(`El puente de WordPress respondió ${detalle}`);
+      }
+
+      const data = await wpRes.json();
+      const origin = new URL(targetUrl).origin;
+
+      const items = data.archivos || data.files || data.items || [];
+      if (Array.isArray(items) && items.length > 0) {
+        return [{
+          nombre: data.carpeta?.nombre || data.nombre || data.name || 'Carpeta de la Nube',
+          archivos: items.map(it => ({
+            nombre: it.nombre || it.name || it.fileName,
+            url_embed: it.token ? `${origin}/v/${it.token}` : (it.url_embed || (it.version ? `${origin}/api/files/${it.version}` : '')),
+            formato: 'iframe'
+          }))
+        }];
+      }
+      return [];
+    }
+
+    function deducirSeccionPorNombre(nombreCarpeta) {
+      const n = nombreCarpeta.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (n.includes('anime') && (n.includes('pelicula') || n.includes('peli') || n.includes('movie'))) return 'peliculas-anime';
+      if (n.includes('anime')) return 'series-anime';
+      if (n.includes('docuserie')) return 'docuseries';
+      if (n.includes('documental')) return 'documentales';
+      if (n.includes('telenovela') || n.includes('novela')) return 'telenovelas';
+      if (n.includes('programa') || n.includes('tv')) return 'programas-tv';
+      if (n.includes('serie')) return 'series';
+      return 'peliculas';
+    }
+
+    function limpiarTituloYAnio(nombreArchivo) {
+      let limpio = nombreArchivo.replace(/\.(mp4|mkv|webm|avi|m3u8)$/i, '');
+      let anio = '';
+      const matchAnio = limpio.match(/[\(\[\s](19\d{2}|20\d{2})[\)\]\s]?/);
+      if (matchAnio) {
+        anio = matchAnio[1];
+        limpio = limpio.slice(0, matchAnio.index);
+      }
+      limpio = limpio
+        .replace(/\(.*?\)|\[.*?\]/g, '')
+        .replace(/\b(1080p|720p|2160p|4k|castellano|latino|espanol|dual|webrip|bluray|x264|x265|hevc|aac)\b/gi, '')
+        .replace(/[._]+/g, ' ')
+        .trim();
+      return { titulo: limpio, anio };
+    }
+
+    async function buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApiKey) {
+      const endpoint = esSerie ? 'tv' : 'movie';
+      const paramAnio = anio ? (esSerie ? `&first_air_date_year=${anio}` : `&year=${anio}`) : '';
+      const url = `https://api.themoviedb.org/3/search/${endpoint}?api_key=${encodeURIComponent(tmdbApiKey)}&language=es-ES&query=${encodeURIComponent(titulo)}${paramAnio}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Error buscando "${titulo}" en TMDB (${res.status})`);
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) {
+        if (anio) return buscarTmdbPorNombre(titulo, '', esSerie, tmdbApiKey);
+        throw new Error(`No encontrado en TMDB: "${titulo}"`);
+      }
+      return String(data.results[0].id);
     }
 
     async function resolverTmdbId(idInput, tmdbApiKey, endpointTipo) {
@@ -404,7 +502,7 @@
           original_title: baseData.original_title || baseData.original_name || '',
           original_name: baseData.original_title || baseData.original_name || '',
           tagline: baseData.tagline || '',
-          dt_poster: baseData.poster_path || '', // Guardar ruta relativa para Movie Engine Pro
+          dt_poster: baseData.poster_path || '',
           dt_poster_url: posterPath,
           dt_backdrop: baseData.backdrop_path || '',
           imagenes: (baseData.images?.backdrops || []).slice(0, 8).map(i => i.file_path).join('\n'),
@@ -437,34 +535,136 @@
       return null;
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      await initSecurityLock();
+    function renderizarCarpetaNube(carpetas) {
+      const box = document.getElementById('cloud-folders-container');
+      box.innerHTML = '';
+
+      carpetas.forEach((carpeta, cIdx) => {
+        const seccionAuto = deducirSeccionPorNombre(carpeta.nombre);
+        const card = document.createElement('div');
+        card.className = 'folder-card';
+
+        const opcionesHtml = Object.entries(SECCIONES_DOOPLAY)
+          .map(([slug, label]) => `<option value="${slug}" ${slug === seccionAuto ? 'selected' : ''}>${label}</option>`)
+          .join('');
+
+        const archivosHtml = (carpeta.archivos || []).map((arch, aIdx) => `
+          <div class="file-item">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🎬 ${arch.nombre}</span>
+            <button type="button" class="btn-sec btn-pub-cloud" data-cidx="${cIdx}" data-aidx="${aIdx}" style="padding:4px 9px;font-size:0.78rem;flex-shrink:0;">Publicar</button>
+          </div>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="folder-head">
+            <div>
+              <strong>📁 ${carpeta.nombre}</strong>
+              <div style="font-size:0.8rem;color:#94a3b8;">${(carpeta.archivos || []).length} archivos detectados</div>
+            </div>
+            <div>
+              <select id="map-sec-${cIdx}">${opcionesHtml}</select>
+            </div>
+            <div>
+              <button type="button" class="btn-cloud btn-sync-all" data-cidx="${cIdx}">Publicar Todos</button>
+            </div>
+          </div>
+          <div class="file-list">${archivosHtml || '<em>Carpeta vacía</em>'}</div>
+        `;
+        box.appendChild(card);
+      });
+
+      const logBox = document.getElementById('sync-log');
+      const addLog = (html) => {
+        logBox.style.display = 'block';
+        logBox.innerHTML += `<div>${html}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+      };
+
+      box.querySelectorAll('.btn-pub-cloud').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const cIdx = Number(btn.dataset.cidx);
+          const aIdx = Number(btn.dataset.aidx);
+          const archivo = carpetas[cIdx].archivos[aIdx];
+          const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
+          const tmdbApi = document.getElementById('tmdb-api').value.trim();
+
+          if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
+          btn.disabled = true;
+          btn.textContent = '...';
+
+          try {
+            const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
+            const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
+            const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
+
+            const info = await consultarTMDB(tmdbId, tmdbApi, seccionSlug);
+            const servidorNombre = document.getElementById('servidor-nombre').value.trim() || 'MorvehTV';
+            const fuentePlayer = { name: servidorNombre, type: 'iframe', select: 'iframe', idioma: 'es', url: archivo.url_embed };
+            
+            info.meta.dt_player = JSON.stringify([fuentePlayer]);
+            info.meta.dt_links = '';
+
+            const payload = {
+              title: info.titulo,
+              content: info.sinopsis,
+              status: 'publish',
+              meta: info.meta,
+              dooplay_tax: info.taxonomias,
+              dooplay_players: [fuentePlayer]
+            };
+
+            const genreId = await obtenerIdGeneroWP(seccionSlug);
+            if (genreId) payload.genres = [genreId];
+
+            const wpRes = await wpFetch(`/wp/v2/${info.postTypeEndpoint}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const r = await wpRes.json();
+            if (!wpRes.ok) throw new Error(r.message || 'Error al publicar');
+
+            addLog(`✅ Publicado en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${info.titulo}</a>`);
+            btn.textContent = 'Listo';
+          } catch (err) {
+            addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
+            btn.disabled = false;
+            btn.textContent = 'Reintentar';
+          }
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAllLocal();
 
       CRED_FIELDS.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', saveAllLocal);
       });
 
-      document.getElementById('btn-lock-now').addEventListener('click', () => {
-        sessionStorage.removeItem('mtv_man_unlocked');
-        location.reload();
-      });
-
       document.getElementById('btn-wipe-creds').addEventListener('click', () => {
         if (!confirm('¿Borrar credenciales guardadas?')) return;
         CRED_FIELDS.forEach(id => localStorage.removeItem('mtv_man_' + id));
-        localStorage.removeItem('mtv_man_pin_hash');
-        sessionStorage.removeItem('mtv_man_unlocked');
         location.reload();
       });
 
-      const streamInput = document.getElementById('stream-url');
-      const formatoSelect = document.getElementById('tipo-formato');
-      streamInput.addEventListener('input', () => {
-        const val = streamInput.value.trim();
-        if (!val) return;
-        if (val.includes('/v/')) formatoSelect.value = 'iframe';
-        else if (/\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(val)) formatoSelect.value = 'mp4';
+      document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const mode = tab.dataset.mode;
+          document.getElementById('publish-mode').value = mode;
+
+          if (mode === 'nube') {
+            document.getElementById('cloud-sync-panel').style.display = 'block';
+            document.getElementById('generator-form').style.display = 'none';
+          } else {
+            document.getElementById('cloud-sync-panel').style.display = 'none';
+            document.getElementById('generator-form').style.display = 'block';
+          }
+        });
       });
 
       document.getElementById('btn-test-wp').addEventListener('click', async () => {
@@ -494,6 +694,22 @@
           connStatus.innerHTML = `<span style="color:#fca5a5;">❌ Error de conexión (${err.message})</span>`;
         } finally {
           btnTest.disabled = false;
+        }
+      });
+
+      document.getElementById('btn-scan-cloud').addEventListener('click', async () => {
+        saveAllLocal();
+        const box = document.getElementById('cloud-folders-container');
+        box.innerHTML = '<div style="color:#94a3b8;margin:10px 0;">Escaneando carpeta de la nube a través del puente de WordPress...</div>';
+        try {
+          const carpetas = await listarCarpetasNube();
+          if (!carpetas.length) {
+            box.innerHTML = '<div style="color:#fca5a5;">No se encontraron archivos en esa carpeta compartida.</div>';
+            return;
+          }
+          renderizarCarpetaNube(carpetas);
+        } catch (err) {
+          box.innerHTML = `<div style="padding:12px;background:#3b1518;color:#fca5a5;border-radius:8px;">⚠️ ${err.message}</div>`;
         }
       });
 
@@ -546,7 +762,6 @@
 
           const info = await consultarTMDB(idInput, tmdbApi, seccionSlug);
 
-          // Estructura de reproductor compatible al 100% con Movie Engine Pro y DooPlay
           const fuentePlayer = {
             name: servidorNombre,
             type: tipoFormato,
@@ -555,7 +770,6 @@
             url: streamUrl
           };
 
-          // Inyectar en dt_player como JSON plano y limpiar dt_links para evitar tabla de descarga
           info.meta.dt_player = JSON.stringify([fuentePlayer]);
           info.meta.dt_links = '';
 
@@ -565,7 +779,7 @@
             status: 'publish',
             meta: info.meta,
             dooplay_tax: info.taxonomias,
-            dooplay_players: [fuenteProvider = fuentePlayer]
+            dooplay_players: [fuentePlayer]
           };
 
           const genreId = await obtenerIdGeneroWP(seccionSlug);
