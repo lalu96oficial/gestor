@@ -241,21 +241,21 @@
     </div>
     <input type="hidden" id="publish-mode" value="nube" />
 
-    <!-- PANEL 1: CONEXIÓN CON NUBE.MORVEHTV.COM E IMPORTACIÓN POR ENLACES -->
+    <!-- PANEL 1: CONEXIÓN CON NUBE.MORVEHTV.COM VIA PUENTE WP E IMPORTACIÓN EN LOTE -->
     <div id="cloud-sync-panel">
       <div class="vault-box">
-        <div class="grid-auth" style="grid-template-columns: 1.4fr 1fr 1fr auto;">
+        <div class="grid-auth" style="grid-template-columns: 1.5fr 1fr 1fr auto;">
           <div class="field" style="margin-bottom:0;">
-            <label for="cloud-host">URL de tu Nube o Enlace Público (/s/...)</label>
-            <input type="url" id="cloud-host" value="https://nube.morvehtv.com" placeholder="https://nube.morvehtv.com o https://nube.morvehtv.com/s/..." />
+            <label for="cloud-host">Enlace Público Carpeta (/s/...) o API Carpeta</label>
+            <input type="url" id="cloud-host" value="https://nube.morvehtv.com" placeholder="https://nube.morvehtv.com/s/TU_TOKEN" />
           </div>
           <div class="field" style="margin-bottom:0;">
             <label for="cj-user">Usuario Nube (opcional)</label>
             <input type="text" id="cj-user" placeholder="Opcional" />
           </div>
           <div class="field" style="margin-bottom:0;">
-            <label for="cj-key">Clave / Token Nube (opcional)</label>
-            <input type="password" id="cj-key" placeholder="Token o clave" />
+            <label for="cj-key">Token App Nube (opcional)</label>
+            <input type="password" id="cj-key" placeholder="Solo si usas /api/app/carpeta" />
           </div>
           <div class="field" style="margin-bottom:0;">
             <button type="button" id="btn-scan-cloud" class="btn-cloud">Escanear carpetas</button>
@@ -454,76 +454,90 @@
       pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockAction(); });
     }
 
-    // CONEXIÓN CON NUBE.MORVEHTV.COM (SOPORTA /api/catalogo, /s/<token> Y /api/app/carpeta)
+    // CONEXIÓN WORDPRESS Y TMDB
+    function getWpBaseUrl() {
+      const raw = document.getElementById('wp-url').value.trim() || 'https://morvehtv.com';
+      return raw.replace(/\/+$/, '');
+    }
+
+    function getAuthHeader() {
+      const user = document.getElementById('wp-user').value.trim();
+      const pass = document.getElementById('wp-pass').value.replace(/\s+/g, '').trim();
+      const bytes = new TextEncoder().encode(`${user}:${pass}`);
+      let bin = '';
+      bytes.forEach(b => { bin += String.fromCharCode(b); });
+      return 'Basic ' + btoa(bin);
+    }
+
+    async function wpFetch(endpointPath, options = {}) {
+      const base = getWpBaseUrl();
+      const url = `${base}/wp-json${endpointPath}`;
+      const headers = Object.assign({
+        'Authorization': getAuthHeader(),
+        'Accept': 'application/json'
+      }, options.headers || {});
+
+      return fetch(url, {
+        ...options,
+        mode: 'cors',
+        credentials: 'omit',
+        headers
+      });
+    }
+
+    // CONEXIÓN CON NUBE.MORVEHTV.COM A TRAVÉS DEL PUENTE DE WORDPRESS (SIN CORS)
     async function listarCarpetasNube() {
       const raw = document.getElementById('cloud-host').value.trim() || 'https://nube.morvehtv.com';
       const base = raw.replace(/\/+$/, '');
-      const user = document.getElementById('cj-user').value.trim();
       const key = document.getElementById('cj-key').value.trim();
 
-      const headers = { 'Accept': 'application/json' };
-      if (user && key) {
-        headers['Authorization'] = 'Basic ' + btoa(`${user}:${key}`);
-      } else if (key) {
-        headers['Authorization'] = `Bearer ${key}`;
-        headers['X-Api-Key'] = key;
-      }
-
-      // Caso 1: el usuario pegó un enlace público de carpeta https://nube.morvehtv.com/s/<token>
+      let targetUrl = '';
       const shareMatch = base.match(/^(https?:\/\/[^/]+)\/s\/([^/?#]+)/i);
       if (shareMatch) {
-        const origin = shareMatch[1];
-        const shareToken = shareMatch[2];
-        const res = await fetch(`${origin}/api/public/${encodeURIComponent(shareToken)}`, { headers });
-        if (!res.ok) throw new Error(`No se pudo leer la carpeta compartida (HTTP ${res.status})`);
-        const data = await res.json();
-        const items = data.archivos || data.files || data.items || [];
+        targetUrl = `${shareMatch[1]}/api/public/${encodeURIComponent(shareMatch[2])}`;
+      } else if (base.includes('/api/')) {
+        targetUrl = base;
+      } else {
+        throw new Error(
+          'Pega en "Enlace Público Carpeta" el enlace compartido de una carpeta (ej. https://nube.morvehtv.com/s/TU_TOKEN) ' +
+          'o la URL https://nube.morvehtv.com/api/app/carpeta?folder=ID_CARPETA'
+        );
+      }
+
+      const wpRes = await wpFetch('/morvehtv/v1/nube-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: targetUrl, token: key })
+      });
+
+      if (!wpRes.ok) {
+        let detalle = `HTTP ${wpRes.status}`;
+        try {
+          const e = await wpRes.json();
+          if (e.message) detalle += `: ${e.message}`;
+        } catch (_) {}
+        throw new Error(`El puente de WordPress respondió ${detalle}`);
+      }
+
+      const data = await wpRes.json();
+      const origin = new URL(targetUrl).origin;
+
+      if (Array.isArray(data.carpetas)) return data.carpetas;
+
+      const items = data.archivos || data.files || data.items || [];
+      if (Array.isArray(items) && items.length > 0) {
         return [{
-          nombre: data.nombre || data.name || 'Carpeta compartida',
+          nombre: data.carpeta?.nombre || data.nombre || data.name || 'Carpeta Nube',
           archivos: items.map(it => ({
             nombre: it.nombre || it.name || it.fileName,
-            url_embed: it.token ? `${origin}/v/${it.token}` : (it.url_embed || `${origin}/s/${shareToken}`),
-            formato: 'iframe'
+            url_embed: it.token
+              ? `${origin}/v/${it.token}`
+              : (it.url_embed || (it.version ? `${origin}/api/files/${it.version}` : '')),
+            formato: it.token || it.url_embed ? 'iframe' : 'mp4'
           }))
         }];
       }
 
-      // Caso 2: intentar /api/catalogo o /api/app/carpeta
-      const endpoint = base.includes('/api/') ? base : `${base}/api/catalogo`;
-      let res;
-      try {
-        res = await fetch(endpoint, { headers });
-      } catch (netErr) {
-        throw new Error(
-          `El servidor nube.morvehtv.com bloqueó la lectura directa por CORS (${netErr.message}). ` +
-          `Usa el cuadro inferior "Importación directa en lote" para pegar tus enlaces /v/... y publicarlos al instante.`
-        );
-      }
-
-      if (!res.ok) {
-        throw new Error(
-          `La ruta ${endpoint} respondió HTTP ${res.status}. ` +
-          `Usa el cuadro inferior "Importación directa en lote" para pegar tus enlaces /v/... y sincronizarlos.`
-        );
-      }
-
-      const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error(`La ruta ${endpoint} no devolvió JSON. Usa la "Importación directa en lote" de abajo.`);
-      }
-
-      const data = await res.json();
-      if (Array.isArray(data.carpetas)) return data.carpetas;
-      if (Array.isArray(data.archivos)) {
-        return [{
-          nombre: data.carpeta?.nombre || 'Carpeta Nube',
-          archivos: data.archivos.map(a => ({
-            nombre: a.nombre,
-            url_embed: a.url_embed || `${base}/api/files/${a.version}`,
-            formato: a.url_embed ? 'iframe' : 'mp4'
-          }))
-        }];
-      }
       return [];
     }
 
@@ -556,37 +570,6 @@
         seccionForzada: seccionSlug,
         archivos
       }];
-    }
-
-    // CONEXIÓN WORDPRESS Y TMDB
-    function getWpBaseUrl() {
-      const raw = document.getElementById('wp-url').value.trim() || 'https://morvehtv.com';
-      return raw.replace(/\/+$/, '');
-    }
-
-    function getAuthHeader() {
-      const user = document.getElementById('wp-user').value.trim();
-      const pass = document.getElementById('wp-pass').value.replace(/\s+/g, '').trim();
-      const bytes = new TextEncoder().encode(`${user}:${pass}`);
-      let bin = '';
-      bytes.forEach(b => { bin += String.fromCharCode(b); });
-      return 'Basic ' + btoa(bin);
-    }
-
-    async function wpFetch(endpointPath, options = {}) {
-      const base = getWpBaseUrl();
-      const url = `${base}/wp-json${endpointPath}`;
-      const headers = Object.assign({
-        'Authorization': getAuthHeader(),
-        'Accept': 'application/json'
-      }, options.headers || {});
-
-      return fetch(url, {
-        ...options,
-        mode: 'cors',
-        credentials: 'omit',
-        headers
-      });
     }
 
     function deducirSeccionPorCarpeta(nombreCarpeta) {
@@ -1091,16 +1074,16 @@
         }
       });
 
-      // ESCANEAR CARPETAS DE NUBE.MORVEHTV.COM
+      // ESCANEAR CARPETAS DE NUBE.MORVEHTV.COM VIA PUENTE WP
       document.getElementById('btn-scan-cloud').addEventListener('click', async () => {
         saveAllLocal();
         const foldersBox = document.getElementById('cloud-folders-container');
-        foldersBox.innerHTML = '<div style="color:#94a3b8;margin:10px 0;">Conectando con nube.morvehtv.com y leyendo carpetas...</div>';
+        foldersBox.innerHTML = '<div style="color:#94a3b8;margin:10px 0;">Conectando con nube.morvehtv.com a través de WordPress...</div>';
 
         try {
           const carpetas = await listarCarpetasNube();
           if (!carpetas.length) {
-            foldersBox.innerHTML = '<div style="color:#fca5a5;">No se encontraron carpetas con vídeos en la nube.</div>';
+            foldersBox.innerHTML = '<div style="color:#fca5a5;">No se encontraron vídeos en esa carpeta compartida.</div>';
             return;
           }
           renderizarCarpetasEnPantalla(carpetas);
