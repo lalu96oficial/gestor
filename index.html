@@ -49,7 +49,7 @@
     .grid-3 { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: end; }
     .field { margin-bottom: 14px; }
     label { display: block; font-size: 0.84rem; color: var(--muted); margin-bottom: 6px; }
-    input, select {
+    input, select, textarea {
       width: 100%;
       padding: 10px 12px;
       border-radius: 8px;
@@ -58,7 +58,8 @@
       color: var(--text);
       font-size: 0.94rem;
     }
-    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    textarea { min-height: 115px; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
     button {
       padding: 10px 14px;
       border: none;
@@ -139,7 +140,7 @@
       margin-bottom: 8px;
     }
     .file-list {
-      max-height: 170px;
+      max-height: 220px;
       overflow-y: auto;
       font-size: 0.84rem;
       color: var(--muted);
@@ -240,13 +241,13 @@
     </div>
     <input type="hidden" id="publish-mode" value="nube" />
 
-    <!-- PANEL 1: CONEXIÓN PRIVADA CON NUBE.MORVEHTV.COM -->
+    <!-- PANEL 1: CONEXIÓN CON NUBE.MORVEHTV.COM E IMPORTACIÓN POR ENLACES -->
     <div id="cloud-sync-panel">
       <div class="vault-box">
         <div class="grid-auth" style="grid-template-columns: 1.4fr 1fr 1fr auto;">
           <div class="field" style="margin-bottom:0;">
-            <label for="cloud-host">URL de tu Nube</label>
-            <input type="url" id="cloud-host" value="https://nube.morvehtv.com" placeholder="https://nube.morvehtv.com" />
+            <label for="cloud-host">URL de tu Nube o Enlace Público (/s/...)</label>
+            <input type="url" id="cloud-host" value="https://nube.morvehtv.com" placeholder="https://nube.morvehtv.com o https://nube.morvehtv.com/s/..." />
           </div>
           <div class="field" style="margin-bottom:0;">
             <label for="cj-user">Usuario Nube (opcional)</label>
@@ -254,10 +255,30 @@
           </div>
           <div class="field" style="margin-bottom:0;">
             <label for="cj-key">Clave / Token Nube (opcional)</label>
-            <input type="password" id="cj-key" placeholder="X-Api-Key o contraseña" />
+            <input type="password" id="cj-key" placeholder="Token o clave" />
           </div>
           <div class="field" style="margin-bottom:0;">
             <button type="button" id="btn-scan-cloud" class="btn-cloud">Escanear carpetas</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+          <label for="batch-links">
+            Importación directa en lote (pega tus enlaces de <code>nube.morvehtv.com/v/...</code> o <code>.mp4</code>, uno por línea con formato: <code>Título (Año) | https://nube.morvehtv.com/v/...</code>)
+          </label>
+          <textarea id="batch-links" placeholder="Gladiator (2000) | https://nube.morvehtv.com/v/abc123&#10;Interstellar (2014) | https://nube.morvehtv.com/v/def456"></textarea>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+            <select id="batch-section" style="max-width:220px;">
+              <option value="peliculas">Sección: Películas</option>
+              <option value="series">Sección: Series</option>
+              <option value="peliculas-anime">Sección: Películas Anime</option>
+              <option value="series-anime">Sección: Series Anime</option>
+              <option value="documentales">Sección: Documentales</option>
+              <option value="docuseries">Sección: Docuseries</option>
+              <option value="programas-tv">Sección: Programas TV</option>
+              <option value="telenovelas">Sección: Telenovelas</option>
+            </select>
+            <button type="button" id="btn-load-batch" class="btn-sec">Cargar lista para sincronizar</button>
           </div>
         </div>
       </div>
@@ -433,31 +454,108 @@
       pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockAction(); });
     }
 
-    // CONEXIÓN CON NUBE.MORVEHTV.COM (/api/catalogo)
+    // CONEXIÓN CON NUBE.MORVEHTV.COM (SOPORTA /api/catalogo, /s/<token> Y /api/app/carpeta)
     async function listarCarpetasNube() {
       const raw = document.getElementById('cloud-host').value.trim() || 'https://nube.morvehtv.com';
       const base = raw.replace(/\/+$/, '');
       const user = document.getElementById('cj-user').value.trim();
       const key = document.getElementById('cj-key').value.trim();
 
-      const endpoint = base.includes('/api/') ? base : `${base}/api/catalogo`;
       const headers = { 'Accept': 'application/json' };
       if (user && key) {
         headers['Authorization'] = 'Basic ' + btoa(`${user}:${key}`);
       } else if (key) {
+        headers['Authorization'] = `Bearer ${key}`;
         headers['X-Api-Key'] = key;
       }
 
-      const res = await fetch(endpoint, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status} al consultar ${endpoint}`);
+      // Caso 1: el usuario pegó un enlace público de carpeta https://nube.morvehtv.com/s/<token>
+      const shareMatch = base.match(/^(https?:\/\/[^/]+)\/s\/([^/?#]+)/i);
+      if (shareMatch) {
+        const origin = shareMatch[1];
+        const shareToken = shareMatch[2];
+        const res = await fetch(`${origin}/api/public/${encodeURIComponent(shareToken)}`, { headers });
+        if (!res.ok) throw new Error(`No se pudo leer la carpeta compartida (HTTP ${res.status})`);
+        const data = await res.json();
+        const items = data.archivos || data.files || data.items || [];
+        return [{
+          nombre: data.nombre || data.name || 'Carpeta compartida',
+          archivos: items.map(it => ({
+            nombre: it.nombre || it.name || it.fileName,
+            url_embed: it.token ? `${origin}/v/${it.token}` : (it.url_embed || `${origin}/s/${shareToken}`),
+            formato: 'iframe'
+          }))
+        }];
+      }
+
+      // Caso 2: intentar /api/catalogo o /api/app/carpeta
+      const endpoint = base.includes('/api/') ? base : `${base}/api/catalogo`;
+      let res;
+      try {
+        res = await fetch(endpoint, { headers });
+      } catch (netErr) {
+        throw new Error(
+          `El servidor nube.morvehtv.com bloqueó la lectura directa por CORS (${netErr.message}). ` +
+          `Usa el cuadro inferior "Importación directa en lote" para pegar tus enlaces /v/... y publicarlos al instante.`
+        );
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          `La ruta ${endpoint} respondió HTTP ${res.status}. ` +
+          `Usa el cuadro inferior "Importación directa en lote" para pegar tus enlaces /v/... y sincronizarlos.`
+        );
+      }
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
-        throw new Error(`La ruta ${endpoint} devolvió HTML en lugar de JSON. Ejecuta el prompt de /api/catalogo en Claude Code dentro de nube.morvehtv.com.`);
+        throw new Error(`La ruta ${endpoint} no devolvió JSON. Usa la "Importación directa en lote" de abajo.`);
       }
 
       const data = await res.json();
-      return data.carpetas || [];
+      if (Array.isArray(data.carpetas)) return data.carpetas;
+      if (Array.isArray(data.archivos)) {
+        return [{
+          nombre: data.carpeta?.nombre || 'Carpeta Nube',
+          archivos: data.archivos.map(a => ({
+            nombre: a.nombre,
+            url_embed: a.url_embed || `${base}/api/files/${a.version}`,
+            formato: a.url_embed ? 'iframe' : 'mp4'
+          }))
+        }];
+      }
+      return [];
+    }
+
+    function parsearListaManual(texto, seccionSlug) {
+      const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const archivos = [];
+      for (const linea of lineas) {
+        let nombre = '';
+        let url = '';
+        if (linea.includes('|')) {
+          const partes = linea.split('|');
+          nombre = partes[0].trim();
+          url = partes.slice(1).join('|').trim();
+        } else {
+          url = linea;
+          const seg = decodeURIComponent(url.split('?')[0].split('/').pop() || 'Pelicula');
+          nombre = seg;
+        }
+        if (!url) continue;
+        const esMp4 = /\.(mp4|mkv|webm|m3u8)(\?.*)?$/i.test(url) || url.includes('stream.morvehtv.com');
+        archivos.push({
+          nombre,
+          url_embed: url,
+          formato: esMp4 ? 'mp4' : 'iframe'
+        });
+      }
+      if (!archivos.length) return [];
+      return [{
+        nombre: SECCIONES_DOOPLAY[seccionSlug] || 'Lista importada',
+        seccionForzada: seccionSlug,
+        archivos
+      }];
     }
 
     // CONEXIÓN WORDPRESS Y TMDB
@@ -754,6 +852,130 @@
       return { estado: 'publicado', titulo: info.titulo, link: resultado.link };
     }
 
+    function renderizarCarpetasEnPantalla(carpetas) {
+      const foldersBox = document.getElementById('cloud-folders-container');
+      foldersBox.innerHTML = '';
+
+      carpetas.forEach((carpeta, idx) => {
+        const seccionAuto = carpeta.seccionForzada || deducirSeccionPorCarpeta(carpeta.nombre);
+        const card = document.createElement('div');
+        card.className = 'folder-card';
+
+        const opcionesHtml = Object.entries(SECCIONES_DOOPLAY)
+          .map(([slug, label]) => `<option value="${slug}" ${slug === seccionAuto ? 'selected' : ''}>${label}</option>`)
+          .join('');
+
+        const archivosHtml = (carpeta.archivos || []).map((arch, aIdx) => `
+          <div class="file-item">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🎬 ${arch.nombre}</span>
+            <button type="button" class="btn-sec btn-sync-one" data-cidx="${idx}" data-aidx="${aIdx}" style="padding:4px 9px;font-size:0.78rem;flex-shrink:0;">Publicar</button>
+          </div>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="folder-head">
+            <div>
+              <strong>📁 ${carpeta.nombre}</strong>
+              <div style="font-size:0.8rem;color:#94a3b8;">${(carpeta.archivos || []).length} vídeos detectados</div>
+            </div>
+            <div>
+              <select id="map-sec-${idx}">${opcionesHtml}</select>
+            </div>
+            <div>
+              <button type="button" class="btn-cloud btn-sync-folder" data-cidx="${idx}">Sincronizar carpeta</button>
+            </div>
+          </div>
+          <div class="file-list">${archivosHtml || '<em>Carpeta vacía</em>'}</div>
+        `;
+        foldersBox.appendChild(card);
+      });
+
+      const logBox = document.getElementById('sync-log');
+      const addLog = (html) => {
+        logBox.style.display = 'block';
+        logBox.innerHTML += `<div>${html}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+      };
+
+      foldersBox.querySelectorAll('.btn-sync-one').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const cIdx = Number(btn.dataset.cidx);
+          const aIdx = Number(btn.dataset.aidx);
+          const archivo = carpetas[cIdx].archivos[aIdx];
+          const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
+          const tmdbApi = document.getElementById('tmdb-api').value.trim();
+
+          if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
+          btn.disabled = true;
+          btn.textContent = '...';
+
+          try {
+            const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
+            const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
+            const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
+            const r = await publicarElementoEnWP({
+              tmdbId,
+              seccionSlug,
+              streamUrl: archivo.url_embed || archivo.url,
+              formato: archivo.formato || 'iframe',
+              tmdbApiKey: tmdbApi
+            });
+            if (r.estado === 'omitido') {
+              addLog(`⏭️ Ya existía en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: ${r.titulo}`);
+              btn.textContent = 'Ya existe';
+            } else {
+              addLog(`✅ Publicado en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${r.titulo}</a>`);
+              btn.textContent = 'Listo';
+            }
+          } catch (err) {
+            addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
+            btn.disabled = false;
+            btn.textContent = 'Reintentar';
+          }
+        });
+      });
+
+      foldersBox.querySelectorAll('.btn-sync-folder').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const cIdx = Number(btn.dataset.cidx);
+          const carpeta = carpetas[cIdx];
+          const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
+          const tmdbApi = document.getElementById('tmdb-api').value.trim();
+
+          if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
+          btn.disabled = true;
+          btn.textContent = 'Sincronizando...';
+          addLog(`🔄 Iniciando sincronización de <strong>${carpeta.nombre}</strong> → <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>...`);
+
+          for (const archivo of (carpeta.archivos || [])) {
+            try {
+              const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
+              const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
+              const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
+              const r = await publicarElementoEnWP({
+                tmdbId,
+                seccionSlug,
+                streamUrl: archivo.url_embed || archivo.url,
+                formato: archivo.formato || 'iframe',
+                tmdbApiKey: tmdbApi
+              });
+              if (r.estado === 'omitido') {
+                addLog(`⏭️ Ya existía: ${r.titulo}`);
+              } else {
+                addLog(`✅ Publicado: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${r.titulo}</a>`);
+              }
+            } catch (err) {
+              addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
+            }
+          }
+
+          btn.disabled = false;
+          btn.textContent = 'Sincronizar carpeta';
+          addLog(`🏁 Carpeta <strong>${carpeta.nombre}</strong> finalizada.`);
+        });
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       await initSecurityLock();
 
@@ -877,134 +1099,27 @@
 
         try {
           const carpetas = await listarCarpetasNube();
-
           if (!carpetas.length) {
             foldersBox.innerHTML = '<div style="color:#fca5a5;">No se encontraron carpetas con vídeos en la nube.</div>';
             return;
           }
-
-          foldersBox.innerHTML = '';
-          carpetas.forEach((carpeta, idx) => {
-            const seccionAuto = deducirSeccionPorCarpeta(carpeta.nombre);
-            const card = document.createElement('div');
-            card.className = 'folder-card';
-
-            const opcionesHtml = Object.entries(SECCIONES_DOOPLAY)
-              .map(([slug, label]) => `<option value="${slug}" ${slug === seccionAuto ? 'selected' : ''}>${label}</option>`)
-              .join('');
-
-            const archivosHtml = (carpeta.archivos || []).map((arch, aIdx) => `
-              <div class="file-item">
-                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🎬 ${arch.nombre}</span>
-                <button type="button" class="btn-sec btn-sync-one" data-cidx="${idx}" data-aidx="${aIdx}" style="padding:4px 9px;font-size:0.78rem;flex-shrink:0;">Publicar</button>
-              </div>
-            `).join('');
-
-            card.innerHTML = `
-              <div class="folder-head">
-                <div>
-                  <strong>📁 ${carpeta.nombre}</strong>
-                  <div style="font-size:0.8rem;color:#94a3b8;">${(carpeta.archivos || []).length} vídeos detectados</div>
-                </div>
-                <div>
-                  <select id="map-sec-${idx}">${opcionesHtml}</select>
-                </div>
-                <div>
-                  <button type="button" class="btn-cloud btn-sync-folder" data-cidx="${idx}">Sincronizar carpeta</button>
-                </div>
-              </div>
-              <div class="file-list">${archivosHtml || '<em>Carpeta vacía</em>'}</div>
-            `;
-            foldersBox.appendChild(card);
-          });
-
-          const logBox = document.getElementById('sync-log');
-          const addLog = (html) => {
-            logBox.style.display = 'block';
-            logBox.innerHTML += `<div>${html}</div>`;
-            logBox.scrollTop = logBox.scrollHeight;
-          };
-
-          foldersBox.querySelectorAll('.btn-sync-one').forEach(btn => {
-            btn.addEventListener('click', async () => {
-              const cIdx = Number(btn.dataset.cidx);
-              const aIdx = Number(btn.dataset.aidx);
-              const archivo = carpetas[cIdx].archivos[aIdx];
-              const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
-              const tmdbApi = document.getElementById('tmdb-api').value.trim();
-
-              if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
-              btn.disabled = true;
-              btn.textContent = '...';
-
-              try {
-                const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
-                const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
-                const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
-                const r = await publicarElementoEnWP({
-                  tmdbId,
-                  seccionSlug,
-                  streamUrl: archivo.url_embed || archivo.url,
-                  formato: archivo.formato || 'iframe',
-                  tmdbApiKey: tmdbApi
-                });
-                if (r.estado === 'omitido') {
-                  addLog(`⏭️ Ya existía en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: ${r.titulo}`);
-                  btn.textContent = 'Ya existe';
-                } else {
-                  addLog(`✅ Publicado en <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${r.titulo}</a>`);
-                  btn.textContent = 'Listo';
-                }
-              } catch (err) {
-                addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
-                btn.disabled = false;
-                btn.textContent = 'Reintentar';
-              }
-            });
-          });
-
-          foldersBox.querySelectorAll('.btn-sync-folder').forEach(btn => {
-            btn.addEventListener('click', async () => {
-              const cIdx = Number(btn.dataset.cidx);
-              const carpeta = carpetas[cIdx];
-              const seccionSlug = document.getElementById(`map-sec-${cIdx}`).value;
-              const tmdbApi = document.getElementById('tmdb-api').value.trim();
-
-              if (!tmdbApi) return alert('Introduce tu API Key de TMDB arriba primero.');
-              btn.disabled = true;
-              btn.textContent = 'Sincronizando...';
-              addLog(`🔄 Iniciando sincronización de <strong>${carpeta.nombre}</strong> → <strong>${SECCIONES_DOOPLAY[seccionSlug]}</strong>...`);
-
-              for (const archivo of (carpeta.archivos || [])) {
-                try {
-                  const { titulo, anio } = limpiarTituloYAnio(archivo.nombre);
-                  const esSerie = ['series', 'series-anime', 'docuseries', 'programas-tv', 'telenovelas'].includes(seccionSlug);
-                  const tmdbId = await buscarTmdbPorNombre(titulo, anio, esSerie, tmdbApi);
-                  const r = await publicarElementoEnWP({
-                    tmdbId,
-                    seccionSlug,
-                    streamUrl: archivo.url_embed || archivo.url,
-                    formato: archivo.formato || 'iframe',
-                    tmdbApiKey: tmdbApi
-                  });
-                  if (r.estado === 'omitido') {
-                    addLog(`⏭️ Ya existía: ${r.titulo}`);
-                  } else {
-                    addLog(`✅ Publicado: <a href="${r.link}" target="_blank" style="color:#38bdf8;">${r.titulo}</a>`);
-                  }
-                } catch (err) {
-                  addLog(`❌ Error con <em>${archivo.nombre}</em>: ${err.message}`);
-                }
-              }
-
-              btn.disabled = false;
-              btn.textContent = 'Sincronizar carpeta';
-              addLog(`🏁 Carpeta <strong>${carpeta.nombre}</strong> finalizada.`);
-            });
-          });
+          renderizarCarpetasEnPantalla(carpetas);
         } catch (err) {
-          foldersBox.innerHTML = `<div style="color:#fca5a5;">❌ Error conectando con la nube: ${err.message}</div>`;
+          foldersBox.innerHTML = `<div style="padding:12px;background:#3b1518;color:#fca5a5;border-radius:8px;margin-bottom:10px;">⚠️ ${err.message}</div>`;
         }
+      });
+
+      // CARGAR LISTA EN LOTE (SIN CORS)
+      document.getElementById('btn-load-batch').addEventListener('click', () => {
+        const texto = document.getElementById('batch-links').value;
+        const seccion = document.getElementById('batch-section').value;
+        const foldersBox = document.getElementById('cloud-folders-container');
+        const carpetas = parsearListaManual(texto, seccion);
+        if (!carpetas.length) {
+          foldersBox.innerHTML = '<div style="color:#fca5a5;">Pega al menos una línea con formato: Título (Año) | https://nube.morvehtv.com/v/...</div>';
+          return;
+        }
+        renderizarCarpetasEnPantalla(carpetas);
       });
 
       document.getElementById('btn-check').addEventListener('click', async () => {
