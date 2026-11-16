@@ -383,6 +383,7 @@
 
       const fecha = baseData.release_date || baseData.first_air_date || '';
       const anio = fecha ? fecha.slice(0, 4) : '';
+      const posterPath = baseData.poster_path ? `https://image.tmdb.org/t/p/w500${baseData.poster_path}` : '';
 
       return {
         postTypeEndpoint: esSerie ? 'tvshows' : 'movies',
@@ -390,7 +391,7 @@
         titulo: baseData.title || baseData.name,
         sinopsis: baseData.overview || '',
         fecha,
-        previewPoster: baseData.poster_path ? `https://image.tmdb.org/t/p/w500${baseData.poster_path}` : '',
+        previewPoster: posterPath,
         metaInfo: `Nota: ${baseData.vote_average ? baseData.vote_average.toFixed(1) : 'N/A'} · Sección: ${SECCIONES_DOOPLAY[seccionSlug]}`,
         taxonomias: {
           dtcast: castLista.map(p => p.name),
@@ -403,7 +404,8 @@
           original_title: baseData.original_title || baseData.original_name || '',
           original_name: baseData.original_title || baseData.original_name || '',
           tagline: baseData.tagline || '',
-          dt_poster: baseData.poster_path || '',
+          dt_poster: baseData.poster_path || '', // Guardar ruta relativa para Movie Engine Pro
+          dt_poster_url: posterPath,
           dt_backdrop: baseData.backdrop_path || '',
           imagenes: (baseData.images?.backdrops || []).slice(0, 8).map(i => i.file_path).join('\n'),
           release_date: fecha,
@@ -544,7 +546,7 @@
 
           const info = await consultarTMDB(idInput, tmdbApi, seccionSlug);
 
-          // Objeto de reproductor compatible con DooPlay y Movie Engine Pro
+          // Estructura de reproductor compatible al 100% con Movie Engine Pro y DooPlay
           const fuentePlayer = {
             name: servidorNombre,
             type: tipoFormato,
@@ -553,9 +555,9 @@
             url: streamUrl
           };
 
-          // Asignar al reproductor interactivo y limpiar cualquier rastro de tabla de descarga
+          // Inyectar en dt_player como JSON plano y limpiar dt_links para evitar tabla de descarga
           info.meta.dt_player = JSON.stringify([fuentePlayer]);
-          info.meta.dt_links = ''; 
+          info.meta.dt_links = '';
 
           const payload = {
             title: info.titulo,
@@ -563,7 +565,7 @@
             status: 'publish',
             meta: info.meta,
             dooplay_tax: info.taxonomias,
-            dooplay_players: [fuentePlayer]
+            dooplay_players: [fuenteProvider = fuentePlayer]
           };
 
           const genreId = await obtenerIdGeneroWP(seccionSlug);
